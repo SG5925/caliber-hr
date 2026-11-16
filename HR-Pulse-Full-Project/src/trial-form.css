@@ -114,3 +114,4 @@
 .trial-handoff{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .trial-handoff-later{margin-left:auto;border:1px solid #1e7f4f;background:#fff;color:#1e7f4f;border-radius:8px;padding:6px 14px;font-weight:600;cursor:pointer}
 .trial-handoff-later:hover{background:#eaf7ef}
+.trial-handoff-saved{margin-left:auto;font-weight:600}
