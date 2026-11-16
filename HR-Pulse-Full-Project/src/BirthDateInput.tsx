@@ -1,4 +1,4 @@
-import {useId,useLayoutEffect,useRef,useState,type InputHTMLAttributes,type ChangeEvent} from 'react';
+import {useId,useLayoutEffect,useRef,useState,type InputHTMLAttributes,type FormEvent} from 'react';
 import {ageText} from './age';
 import {dobDisplay,dobIso} from './dobFormat';
 import './birth-date.css';
@@ -17,13 +17,24 @@ function BirthDateInput({showAge,onBirthDateValue,...props}:Omit<Props,'birthDat
  const canonical=useRef<HTMLInputElement>(null),writing=useRef(false),visible=useRef<HTMLInputElement>(null),notify=useRef(onBirthDateValue),lastEmitted=useRef<string|undefined>(undefined),caret=useRef<number|null>(null),id=useId(),[text,setText]=useState(()=>dobDisplay(String(props.value??props.defaultValue??'')));notify.current=onBirthDateValue;
  useLayoutEffect(()=>{const control=canonical.current;if(!control)return;const sync=()=>{if(writing.current)return;setText(dobDisplay(control.value));notify.current?.(dobIso(dobDisplay(control.value)));};sync();control.addEventListener('input',sync);control.addEventListener('change',sync);return()=>{control.removeEventListener('input',sync);control.removeEventListener('change',sync);};},[]);
  useLayoutEffect(()=>{if(props.value!==undefined&&String(props.value)!==lastEmitted.current){const display=dobDisplay(String(props.value));setText(display);if(canonical.current)canonical.current.value=dobIso(display);notify.current?.(dobIso(display));}},[props.value]);
- function change(event:ChangeEvent<HTMLInputElement>){let raw=event.target.value;const previous=text;
+ function change(event:FormEvent<HTMLInputElement>){let raw=event.currentTarget.value;const previous=text;
   // Backspace over an automatic slash also removes the preceding digit.
   if(previous.endsWith('/')&&raw===previous.slice(0,-1))raw=raw.slice(0,-1);
-  const count=raw.slice(0,event.target.selectionStart??raw.length).replace(/\D/g,'').length;caret.current=Math.min(10,count+(count>=2?1:0)+(count>=4?1:0));const display=dobDisplay(raw),iso=dobIso(display);lastEmitted.current=iso;setText(display);
-  const control=canonical.current;if(control){control.value=iso;notify.current?.(iso);props.onChange?.({...event,target:control,currentTarget:control});writing.current=true;control.dispatchEvent(new Event('input',{bubbles:true}));writing.current=false;}
+  const count=raw.slice(0,event.currentTarget.selectionStart??raw.length).replace(/\D/g,'').length;caret.current=Math.min(10,count+(count>=2?1:0)+(count>=4?1:0));const display=dobDisplay(raw),iso=dobIso(display);lastEmitted.current=iso;setText(display);
+  const control=canonical.current;
+  if(!control)return;
+  control.value=iso;
+  notify.current?.(iso);
+  props.onChange?.({...event,target:control,currentTarget:control});
+  if(event.nativeEvent.type!=='input'){
+   writing.current=true;
+   control.dispatchEvent(new Event('input',{bubbles:true}));
+   writing.current=false;
+  }
  }
  useLayoutEffect(()=>{if(caret.current!==null&&visible.current===document.activeElement){visible.current?.setSelectionRange(caret.current,caret.current);caret.current=null;}visible.current?.setCustomValidity(text&&!dobIso(text)?'Enter a valid date of birth as DD/MM/YYYY.':'');},[text]);
- const control=<><input {...props} ref={visible} name={undefined} type="text" inputMode="numeric" min={undefined} max={undefined} minLength={10} maxLength={10} pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" placeholder="DD/MM/YYYY" defaultValue={undefined} value={text} onInput={undefined} onChange={change} aria-label={props['aria-label']||props.name} aria-describedby={[props['aria-describedby'],showAge?id:''].filter(Boolean).join(' ')||undefined}/><input ref={canonical} type="hidden" disabled={props.disabled} name={props.name} defaultValue={dobIso(dobDisplay(String(props.value??props.defaultValue??'')))}/></>;
- return showAge?<span className="birth-date-pair">{control}<span className="birth-age-field" id={id}><span className="birth-age-heading">Age</span><AgeDisplay value={dobIso(text)}/></span></span>:control;
+ const iso=dobIso(text);
+ // Capture the edit before the form's native autosave listener reads the DOB.
+ const control=<><input {...props} ref={visible} name={undefined} type="text" inputMode="numeric" min={undefined} max={undefined} minLength={10} maxLength={10} pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" placeholder="DD/MM/YYYY" defaultValue={undefined} value={text} onInput={undefined} onInputCapture={change} onChange={event=>{if(event.nativeEvent.type!=='input')change(event);}} aria-label={props['aria-label']||props.name} aria-describedby={[props['aria-describedby'],showAge?id:''].filter(Boolean).join(' ')||undefined}/><input ref={canonical} type="hidden" disabled={props.disabled} name={props.name} value={iso}/></>;
+ return showAge?<span className="birth-date-pair">{control}<span className="birth-age-field" id={id}><span className="birth-age-heading">Age</span><AgeDisplay value={iso}/></span></span>:control;
 }

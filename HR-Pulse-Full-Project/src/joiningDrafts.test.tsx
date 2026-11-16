@@ -11,12 +11,27 @@ it('autosaves incomplete fields and resumes after unmount without a network call
  fireEvent.click(screen.getByRole('button',{name:/Joining & Personal Details/}));
  fireEvent.input(screen.getByLabelText(/^Full Name\s*\*?$/),{target:{value:'Resumable employee'}});
  fireEvent.input(screen.getByLabelText(/^Mobile/),{target:{value:'9876'}});
- await waitFor(()=>expect([...memory.values()][0]?.fields.Mobile[0].value).toBe('9876'));
+ fireEvent.click(screen.getByRole('button',{name:/Family Details/}));
+ const familyDob=screen.getByLabelText('Date of Birth 1') as HTMLInputElement;
+ const readDobDuringInput=vi.fn(() => new FormData(familyDob.form!).get('Date of Birth 1'));
+ familyDob.form!.addEventListener('input',readDobDuringInput,{once:true});
+ fireEvent.input(familyDob,{target:{value:'15032000'}});
+ expect(readDobDuringInput).toHaveReturnedWith('2000-03-15');
+ fireEvent.click(screen.getByRole('button',{name:/Previous Work Experience/}));
+ await waitFor(()=>{
+  const draft=[...memory.values()][0];
+  expect(draft?.step).toBe(4);
+  expect(draft?.fields.Mobile[0].value).toBe('9876');
+  expect(draft?.fields['Date of Birth 1'][0].value).toBe('2000-03-15');
+ });
  view.unmount();render(<EmployeeLocation draftOwner="alice"/>);
  fireEvent.click(screen.getByRole('button',{name:'Draft'}));fireEvent.click(await screen.findByRole('button',{name:'Resume'}));
  expect((screen.getByLabelText(/^Full Name\s*\*?$/) as HTMLInputElement).value).toBe('Resumable employee');
  expect((screen.getByLabelText(/^Mobile/) as HTMLInputElement).value).toBe('9876');
- expect(screen.getAllByRole('heading',{name:'Joining & Personal Details'}).length).toBeGreaterThan(0);
+ expect(screen.getByRole('heading',{name:'Previous Work Experience',level:2})).toBeVisible();
+ fireEvent.click(screen.getByRole('button',{name:/Family Details/}));
+ expect(screen.getByLabelText('Date of Birth 1')).toHaveValue('15/03/2000');
+ expect(screen.getByLabelText('Age 1').textContent).toMatch(/\d+ years?, \d+ months?, \d+ days?/);
 });
 it('draft list is isolated by signed-in account',async()=>{
  memory.set('one',{id:'one',owner:'alice',group:'Corporate / HO',updatedAt:new Date().toISOString(),fields:{'Full Name':[{value:'Private draft'}]},defaults:{},step:1});

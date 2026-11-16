@@ -435,11 +435,19 @@ describe('Employee Master tabs',()=>{
   expect((screen.getByLabelText('Relationship 1') as HTMLSelectElement).value).toBe('Mother');
   expect(screen.getByLabelText('Contact No. 1')).toBeTruthy();
   expect(screen.getByRole('columnheader',{name:'Age'})).toBeTruthy();
-  fireEvent.change(screen.getByLabelText('Date of Birth 1'),{target:{value:'2000-03-15'}});
+  const familyDob=screen.getByLabelText('Date of Birth 1') as HTMLInputElement;
+  const joiningForm=familyDob.form!;
+  fireEvent.input(familyDob,{target:{value:'15032000'}});
+  expect(familyDob.value).toBe('15/03/2000');
   expect(screen.getByLabelText('Age 1').textContent).toMatch(/\d+ years?, \d+ months?, \d+ days?/);
   expect(screen.getByLabelText('Age 2').textContent).toBe('—');
-  fireEvent.change(screen.getByLabelText('Date of Birth 1'),{target:{value:''}});
+  await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Previous Work Experience/}));});
+  expect(new FormData(joiningForm).get('Date of Birth 1')).toBe('2000-03-15');
+  await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Family Details/}));});
+  expect(familyDob.value).toBe('15/03/2000');
+  fireEvent.change(familyDob,{target:{value:''}});
   expect(screen.getByLabelText('Age 1').textContent).toBe('—');
+  expect(new FormData(joiningForm).get('Date of Birth 1')).toBe('');
   await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Previous Work Experience/}));});
   expect(screen.getByLabelText('Employer Name 1')).toBeTruthy();
   for(let row=1;row<=5;row++)for(const label of ['From Date','To Date']){
