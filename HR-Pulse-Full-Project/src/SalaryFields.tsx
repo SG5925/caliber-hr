@@ -12,12 +12,11 @@ function F({label,required,hint,children,id,hidden}:{label:string;required?:bool
 
 /* Links the top-bar selection (group / company / region / site) and the form's Resident + Gender fields to the salary fields. */
 export type SalaryDefaults={employeeGroup?:'Corporate / HO'|'OB / COAL';company?:string;region?:string;site?:string};
-/* PT State auto-fills from the region for men; women are exempt from PT in these states, so it stays blank (selectable if needed). */
-const PT_STATE_FOR:Record<string,string>={WCL:'Maharashtra',NCL:'Madhya Pradesh','Corporate / HO':'Maharashtra'};
+/* PT State is never auto-filled: it stays blank unless HR picks a state. */
 const MESS_SITE_FOR:Record<string,string>={'Sasti OB':'Sasti OB','Dhoptala OB':'Dhoptala OB','Majri OB':'Majri OB','Gauri Pauni OB':'Gouri Pauni OB','Jayant OB East':'Jayant OB East','Jayant OB West':'Jayant OB West','Dudhichua OB East':'Dhudhichua OB East','Dudhichua OB West':'Dhudhichua OB West','Dudichua OB East':'Dhudhichua OB East','Dudichua OB West':'Dhudhichua OB West','Nagpur CO':'Nagpur Corporate Office','Nagpur Office':'Nagpur Corporate Office','Nagpur Corporate Office':'Nagpur Corporate Office','Chandrapur HO':'Chandrapur Head Office','Chandrapur Head Office':'Chandrapur Head Office','Head Office, Chandrapur':'Chandrapur Head Office'};
 export function salaryAutoFill(d:SalaryDefaults,gender:string,resident:string){
  const corporate=d.employeeGroup==='Corporate / HO';
- return {'Salary Type':corporate?(/^f/i.test(gender)?'STDW':'STD'):'HPC','Site / Project':MESS_SITE_FOR[d.site||'']||'','PT State':/^f/i.test(gender)?'':(PT_STATE_FOR[d.region||'']||PT_STATE_FOR[corporate?'Corporate / HO':'']||''),
+ return {'Salary Type':corporate?(/^f/i.test(gender)?'STDW':'STD'):'HPC','Site / Project':MESS_SITE_FOR[d.site||'']||'','PT State':'',
   'Accommodation Category':/local$/i.test(resident)&&!/non-local/i.test(resident)?'NonCamp':resident?'Camp':''};}
 export default function SalaryFields({enforce=true,defaults={}}:{enforce?:boolean;defaults?:SalaryDefaults}){
  /* DOM-driven on purpose: the joining form restores and persists field values directly on the inputs,
