@@ -312,7 +312,9 @@ function ExistingEmployees({rows,loading,error,employeeGroup,type,setType,action
 /* Fields read from the Aadhaar card are locked: they cannot be retyped, only a new scan replaces them.
    The lock is remembered in the hidden "Aadhaar Locked" field so it survives draft reloads. */
 export const AADHAAR_LOCK_FIELD='Aadhaar Locked';
-export function lockAadhaarField(form:HTMLFormElement,name:string){const control=form.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null;if(!control)return;
+export function lockAadhaarField(form:HTMLFormElement,name:string){let control=form.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null;if(!control)return;
+ /* Date of Birth is a visible DD/MM/YYYY box followed by a hidden canonical input carrying the name: lock the visible box. */
+ if(control instanceof HTMLInputElement&&control.type==='hidden'){const visible=control.previousElementSibling;if(visible instanceof HTMLInputElement)control=visible;else return;}
  if(control instanceof HTMLSelectElement){control.dataset.aadhaarLocked='1';control.setAttribute('aria-readonly','true');control.tabIndex=-1;}else{control.readOnly=true;control.dataset.aadhaarLocked='1';}
  control.title='Filled from the Aadhaar card – cannot be edited';
  const flag=form.elements.namedItem(AADHAAR_LOCK_FIELD) as HTMLInputElement|null;if(flag){const set=new Set(flag.value.split('|').filter(Boolean));set.add(name);flag.value=[...set].join('|');}}
