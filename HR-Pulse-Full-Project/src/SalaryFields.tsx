@@ -13,10 +13,9 @@ function F({label,required,hint,children,id,hidden}:{label:string;required?:bool
 /* Links the top-bar selection (group / company / region / site) and the form's Resident + Gender fields to the salary fields. */
 export type SalaryDefaults={employeeGroup?:'Corporate / HO'|'OB / COAL';company?:string;region?:string;site?:string};
 const MESS_SITE_FOR:Record<string,string>={'Sasti OB':'Sasti OB','Dhoptala OB':'Dhoptala OB','Majri OB':'Majri OB','Gauri Pauni OB':'Gouri Pauni OB','Jayant OB East':'Jayant OB East','Jayant OB West':'Jayant OB West','Dudhichua OB East':'Dhudhichua OB East','Dudhichua OB West':'Dhudhichua OB West','Dudichua OB East':'Dhudhichua OB East','Dudichua OB West':'Dhudhichua OB West','Nagpur CO':'Nagpur Corporate Office','Nagpur Office':'Nagpur Corporate Office','Nagpur Corporate Office':'Nagpur Corporate Office','Chandrapur HO':'Chandrapur Head Office','Chandrapur Head Office':'Chandrapur Head Office','Head Office, Chandrapur':'Chandrapur Head Office'};
-const PT_STATE_FOR:Record<string,string>={WCL:'Maharashtra',NCL:'Madhya Pradesh','Corporate / HO':'Maharashtra'};
 export function salaryAutoFill(d:SalaryDefaults,gender:string,resident:string){
  const corporate=d.employeeGroup==='Corporate / HO';
- return {'Salary Type':corporate?(/^f/i.test(gender)?'STDW':'STD'):'HPC','Site / Project':MESS_SITE_FOR[d.site||'']||'','PT State':PT_STATE_FOR[d.region||'']||PT_STATE_FOR[corporate?'Corporate / HO':'']||'',
+ return {'Salary Type':corporate?(/^f/i.test(gender)?'STDW':'STD'):'HPC','Site / Project':MESS_SITE_FOR[d.site||'']||'','PT State':'',
   'Accommodation Category':/local$/i.test(resident)&&!/non-local/i.test(resident)?'NonCamp':resident?'Camp':''};}
 export default function SalaryFields({enforce=true,defaults={}}:{enforce?:boolean;defaults?:SalaryDefaults}){
  /* DOM-driven on purpose: the joining form restores and persists field values directly on the inputs,
@@ -31,7 +30,7 @@ export default function SalaryFields({enforce=true,defaults={}}:{enforce?:boolea
   if(changed)sync();};
  useEffect(()=>{const t=setTimeout(()=>{autoFill();sync();},0);const form=box.current?.closest('form');const onChange=()=>{autoFill();sync();};form?.addEventListener('change',onChange);form?.addEventListener('input',sync);return()=>{clearTimeout(t);form?.removeEventListener('change',onChange);form?.removeEventListener('input',sync);};},[]);
  useEffect(()=>{autoFill();},[defaults.employeeGroup,defaults.company,defaults.region,defaults.site]);
- const stype=read('Salary Type') as SalaryType,cat=read('Skill Category'),gn=read('Monthly Gross Salary'),site=read('Site / Project'),acc=read('Accommodation Category')||'Camp',plan=read('Mess Plan'),sp=read('Special Approval (food)'),state=read('PT State')||PT_STATES[0];
+ const stype=read('Salary Type') as SalaryType,cat=read('Skill Category'),gn=read('Monthly Gross Salary'),site=read('Site / Project'),acc=read('Accommodation Category')||'Camp',plan=read('Mess Plan'),sp=read('Special Approval (food)'),state=read('PT State');
  const st=isStd(stype),r=+cat||0,sal=+String(gn).replace(/[^0-9]/g,'')||0,S=siteInfo(site,sites),hasPlan=!st&&!!stype&&!!S?.plans,sp0=specialRates(site,sites),hasSp=!st&&stype==='NON'&&sp0.length>1;
  const fr=foodRule(site,stype,acc,hasSp?sp:'',hasPlan?plan:'',sites),typeLabel=SALARY_TYPES.find(x=>x.value===stype)?.label||'',catLabel=SKILL_CATEGORIES.find(x=>String(x.value)===cat)?.label||'';
  const base:CalcInput={r,sal,md:31,pd:26,month:10,oi:0,ot:0,ph:0,od:0,site,acc,sp,plan,state};
@@ -61,8 +60,8 @@ export default function SalaryFields({enforce=true,defaults={}}:{enforce?:boolea
    <select id="mess-plan" name="Mess Plan" required={enforce&&hasPlan} defaultValue="" onChange={sync}><option value="">Select</option>{MESS_PLANS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></F>
   <F id="special-approval" label="Special Approval (food)" hint="Individual rate approved for this worker" hidden={!hasSp}>
    <select id="special-approval" name="Special Approval (food)" defaultValue="" onChange={sync}><option value="">None – as per site master</option>{sp0.slice(1).map(p=><option key={p.id} value={p.id}>₹{p.r} per day – {p.rem}</option>)}</select></F>
-  <F id="pt-state" label="PT State" required={enforce} hint="Professional Tax slab from PT Master (state-wise)">
-   <select id="pt-state" name="PT State" required={enforce} defaultValue={PT_STATES[0]} onChange={sync}>{PT_STATES.map(s=><option key={s}>{s}</option>)}</select></F>
+  <F id="pt-state" label="PT State" hint="Optional – Professional Tax slab from PT Master (state-wise); leave blank if PT does not apply">
+   <select id="pt-state" name="PT State" defaultValue="" onChange={sync}><option value="">Select</option>{PT_STATES.map(s=><option key={s}>{s}</option>)}</select></F>
   <div className={'salary-preview'+(canOpen?' ready':'')} role={canOpen?'button':undefined} tabIndex={canOpen?0:-1} onClick={()=>canOpen&&setOpen(true)} onKeyDown={e=>{if(canOpen&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setOpen(true);}}}>
    {preview?<><div className="salary-preview-chips">{preview}</div><span className="salary-preview-link">View full salary summary ›</span></>:<span><b>Salary preview</b> – select Salary Type and fill the salary fields</span>}
   </div>
