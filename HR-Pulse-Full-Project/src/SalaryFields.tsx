@@ -12,7 +12,7 @@ function F({label,required,hint,children,id,hidden}:{label:string;required?:bool
 
 /* Links the top-bar selection (group / company / region / site) and the form's Resident + Gender fields to the salary fields. */
 export type SalaryDefaults={employeeGroup?:'Corporate / HO'|'OB / COAL';company?:string;region?:string;site?:string};
-const MESS_SITE_FOR:Record<string,string>={'Sasti OB':'Sasti OB','Dhoptala OB':'Dhoptala OB','Majri OB':'Majri OB','Gauri Pauni OB':'Gouri Pauni OB','Jayant OB East':'Jayant OB East','Jayant OB West':'Jayant OB West','Dudhichua OB East':'Dhudhichua OB East','Dudhichua OB West':'Dhudhichua OB West'};
+const MESS_SITE_FOR:Record<string,string>={'Sasti OB':'Sasti OB','Dhoptala OB':'Dhoptala OB','Majri OB':'Majri OB','Gauri Pauni OB':'Gouri Pauni OB','Jayant OB East':'Jayant OB East','Jayant OB West':'Jayant OB West','Dudhichua OB East':'Dhudhichua OB East','Dudhichua OB West':'Dhudhichua OB West','Dudichua OB East':'Dhudhichua OB East','Dudichua OB West':'Dhudhichua OB West','Nagpur CO':'Nagpur Corporate Office','Nagpur Office':'Nagpur Corporate Office','Nagpur Corporate Office':'Nagpur Corporate Office','Chandrapur HO':'Chandrapur Head Office','Chandrapur Head Office':'Chandrapur Head Office','Head Office, Chandrapur':'Chandrapur Head Office'};
 const PT_STATE_FOR:Record<string,string>={WCL:'Maharashtra',NCL:'Madhya Pradesh','Corporate / HO':'Maharashtra'};
 export function salaryAutoFill(d:SalaryDefaults,gender:string,resident:string){
  const corporate=d.employeeGroup==='Corporate / HO';

@@ -31,6 +31,8 @@ export const DEFAULT_MESS_SITES:MessSite[]=[
  {site:'Jayant OB West',company:'CMLL',plans:true,rules:[]},
  {site:'Dhudhichua OB West',company:'CMLL',plans:true,rules:[]},
  {site:'Dhudhichua OB East',company:'CMLL',plans:true,rules:[]},
+ {site:'Nagpur Corporate Office',company:'CMLL',plans:false,rules:[]},   /* offices: no mess deduction */
+ {site:'Chandrapur Head Office',company:'CMLL',plans:false,rules:[]},
  {site:'Majri OB',company:'CMLL',plans:false,rules:[HPC_CAMP,{category:'NonCamp',duty:'HPC',rate:102.5,per:'day',food:'Allowed',remark:'Only for HPC Rate (8 hrs duty)'},FIX_CAMP]},
  {site:'Dhoptala OB',company:'CMLL',plans:false,rules:[HPC_CAMP,HPC_NONCAMP_NO,FIX_CAMP]},
  {site:'Gouri Pauni OB',company:'CMLL',plans:false,rules:[HPC_CAMP,HPC_NONCAMP_NO,FIX_CAMP]},
