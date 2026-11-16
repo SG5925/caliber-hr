@@ -12,10 +12,12 @@ function F({label,required,hint,children,id,hidden}:{label:string;required?:bool
 
 /* Links the top-bar selection (group / company / region / site) and the form's Resident + Gender fields to the salary fields. */
 export type SalaryDefaults={employeeGroup?:'Corporate / HO'|'OB / COAL';company?:string;region?:string;site?:string};
+/* PT State auto-fills from the region for men; women are exempt from PT in these states, so it stays blank (selectable if needed). */
+const PT_STATE_FOR:Record<string,string>={WCL:'Maharashtra',NCL:'Madhya Pradesh','Corporate / HO':'Maharashtra'};
 const MESS_SITE_FOR:Record<string,string>={'Sasti OB':'Sasti OB','Dhoptala OB':'Dhoptala OB','Majri OB':'Majri OB','Gauri Pauni OB':'Gouri Pauni OB','Jayant OB East':'Jayant OB East','Jayant OB West':'Jayant OB West','Dudhichua OB East':'Dhudhichua OB East','Dudhichua OB West':'Dhudhichua OB West','Dudichua OB East':'Dhudhichua OB East','Dudichua OB West':'Dhudhichua OB West','Nagpur CO':'Nagpur Corporate Office','Nagpur Office':'Nagpur Corporate Office','Nagpur Corporate Office':'Nagpur Corporate Office','Chandrapur HO':'Chandrapur Head Office','Chandrapur Head Office':'Chandrapur Head Office','Head Office, Chandrapur':'Chandrapur Head Office'};
 export function salaryAutoFill(d:SalaryDefaults,gender:string,resident:string){
  const corporate=d.employeeGroup==='Corporate / HO';
- return {'Salary Type':corporate?(/^f/i.test(gender)?'STDW':'STD'):'HPC','Site / Project':MESS_SITE_FOR[d.site||'']||'','PT State':'',
+ return {'Salary Type':corporate?(/^f/i.test(gender)?'STDW':'STD'):'HPC','Site / Project':MESS_SITE_FOR[d.site||'']||'','PT State':/^f/i.test(gender)?'':(PT_STATE_FOR[d.region||'']||PT_STATE_FOR[corporate?'Corporate / HO':'']||''),
   'Accommodation Category':/local$/i.test(resident)&&!/non-local/i.test(resident)?'NonCamp':resident?'Camp':''};}
 export default function SalaryFields({enforce=true,defaults={}}:{enforce?:boolean;defaults?:SalaryDefaults}){
  /* DOM-driven on purpose: the joining form restores and persists field values directly on the inputs,
@@ -26,7 +28,7 @@ export default function SalaryFields({enforce=true,defaults={}}:{enforce?:boolea
  const formValue=(name:string)=>(box.current?.closest('form')?.querySelector<HTMLInputElement|HTMLSelectElement>(`[name="${name}"]`)?.value)||'';
  /* Auto-fill from the top bar: only fields the user has not set by hand (data-auto marks values we filled). */
  const autoFill=()=>{const fill=salaryAutoFill(defaults,formValue('Gender'),formValue('Resident'));let changed=false;
-  for(const [name,value] of Object.entries(fill)){const el=box.current?.querySelector<HTMLSelectElement>(`select[name="${name}"]`);if(!el||!value)continue;const manual=el.value&&el.dataset.auto!==el.value;if(manual||el.value===value)continue;if(![...el.options].some(o=>o.value===value))continue;el.value=value;el.dataset.auto=value;changed=true;}
+  for(const [name,value] of Object.entries(fill)){const el=box.current?.querySelector<HTMLSelectElement>(`select[name="${name}"]`);if(!el)continue;const manual=el.value&&el.dataset.auto!==el.value;if(!value){if(el.value&&!manual){el.value='';el.dataset.auto='';changed=true;}continue;}if(manual||el.value===value)continue;if(![...el.options].some(o=>o.value===value))continue;el.value=value;el.dataset.auto=value;changed=true;}
   if(changed)sync();};
  useEffect(()=>{const t=setTimeout(()=>{autoFill();sync();},0);const form=box.current?.closest('form');const onChange=()=>{autoFill();sync();};form?.addEventListener('change',onChange);form?.addEventListener('input',sync);return()=>{clearTimeout(t);form?.removeEventListener('change',onChange);form?.removeEventListener('input',sync);};},[]);
  useEffect(()=>{autoFill();},[defaults.employeeGroup,defaults.company,defaults.region,defaults.site]);
