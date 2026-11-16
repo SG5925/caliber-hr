@@ -309,6 +309,14 @@ function ExistingEmployees({rows,loading,error,employeeGroup,type,setType,action
  </div>;
 }
 
+/* Fields read from the Aadhaar card are locked: they cannot be retyped, only a new scan replaces them.
+   The lock is remembered in the hidden "Aadhaar Locked" field so it survives draft reloads. */
+export const AADHAAR_LOCK_FIELD='Aadhaar Locked';
+export function lockAadhaarField(form:HTMLFormElement,name:string){const control=form.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null;if(!control)return;
+ if(control instanceof HTMLSelectElement){control.dataset.aadhaarLocked='1';control.setAttribute('aria-readonly','true');control.tabIndex=-1;}else{control.readOnly=true;control.dataset.aadhaarLocked='1';}
+ control.title='Filled from the Aadhaar card – cannot be edited';
+ const flag=form.elements.namedItem(AADHAAR_LOCK_FIELD) as HTMLInputElement|null;if(flag){const set=new Set(flag.value.split('|').filter(Boolean));set.add(name);flag.value=[...set].join('|');}}
+export function applyAadhaarLocks(form:HTMLFormElement){const flag=form.elements.namedItem(AADHAAR_LOCK_FIELD) as HTMLInputElement|null;for(const name of (flag?.value||'').split('|').filter(Boolean))lockAadhaarField(form,name);}
 export function AadhaarUpload({form,photo,photo2,onPhoto,onPhoto2}:{form:RefObject<HTMLFormElement|null>;photo?:File;photo2?:File;onPhoto?:(file?:File)=>void;onPhoto2?:(file?:File)=>void}){
  function fillDetails(details:AadhaarDetails,slot:1|2){
   const fields={'Full Name':details.name,'Full Name as per Aadhaar':details.name,'Father / Spouse Name':details.relationName,'Date of Birth':details.dob,'Gender':details.gender,'Aadhaar No.':details.uid,'Permanent Address':details.address};
@@ -316,12 +324,12 @@ export function AadhaarUpload({form,photo,photo2,onPhoto,onPhoto2}:{form:RefObje
   for(const [name,value] of Object.entries(fields)){
    if(!value){if(name!=='Full Name as per Aadhaar')missing.push(name);continue;}
    const control=form.current?.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null;
-   if(control&&!control.value){control.value=value;control.dispatchEvent(new Event('change',{bubbles:true}));}
+   if(control&&(!control.value||control.dataset.aadhaarLocked)){control.value=value;control.dispatchEvent(new Event('change',{bubbles:true}));if(form.current&&control.value)lockAadhaarField(form.current,name);}
   }
   if(!Object.values(details).some(Boolean))return 'Automatic reading was unavailable; please enter the details manually.';
   return missing.length
    ? `Image ${slot} details were filled. Please verify them; not confidently read: ${missing.join(', ')}.`
-   : `All detected details from image ${slot} were filled. Please verify them before submitting.`;
+   : `All detected details from image ${slot} were filled and locked (they come from the card and cannot be edited).`;
  }
  return <AadhaarUploader photo={photo} photo2={photo2} onPhoto={onPhoto} onPhoto2={onPhoto2} fillDetails={fillDetails}/>;
 }
@@ -382,7 +390,7 @@ function JoiningForm({employeeGroup,onSave,onTrialSaved,defaults,subdepartments,
  const[saving,setSaving]=useState(false),[saveError,setSaveError]=useState('');
  const formRef=useRef<HTMLFormElement>(null);
  const joiningSteps=['Upload Aadhaar Card','Joining & Personal Details','Educational Details','Family Details','Previous Work Experience','Document Checklist'];
- useEffect(()=>{if(draft&&formRef.current){restoreJoiningFields(formRef.current,draft.fields);restoreJoiningFiles(formRef.current,draft.files||{});}if(handoff&&!draft&&formRef.current){for(const [name,value] of Object.entries(handoff.fields)){if(!value)continue;const control=formRef.current.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null;if(control&&!control.value){control.value=value;control.dispatchEvent(new Event('change',{bubbles:true}));}}dirty.current=true;}const form=formRef.current;const changed=()=>{dirty.current=true;latestPersist.current();};form?.addEventListener('input',changed);form?.addEventListener('change',changed);const flush=()=>latestPersist.current();window.addEventListener('pagehide',flush);return()=>{flush();form?.removeEventListener('input',changed);form?.removeEventListener('change',changed);window.removeEventListener('pagehide',flush);};},[]);
+ useEffect(()=>{if(draft&&formRef.current){restoreJoiningFields(formRef.current,draft.fields);restoreJoiningFiles(formRef.current,draft.files||{});applyAadhaarLocks(formRef.current);}if(handoff&&!draft&&formRef.current){for(const [name,value] of Object.entries(handoff.fields)){if(!value)continue;const control=formRef.current.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null;if(control&&!control.value){control.value=value;control.dispatchEvent(new Event('change',{bubbles:true}));if(['Full Name','Full Name as per Aadhaar','Father / Spouse Name','Date of Birth','Gender','Aadhaar No.','Permanent Address'].includes(name))lockAadhaarField(formRef.current,name);}}dirty.current=true;}const form=formRef.current;const changed=()=>{dirty.current=true;latestPersist.current();};form?.addEventListener('input',changed);form?.addEventListener('change',changed);const flush=()=>latestPersist.current();window.addEventListener('pagehide',flush);return()=>{flush();form?.removeEventListener('input',changed);form?.removeEventListener('change',changed);window.removeEventListener('pagehide',flush);};},[]);
  useEffect(()=>{if(defaults.site||defaults.department||defaults.joiningCategory)dirty.current=true;latestPersist.current();},[step,employeeCategory,defaults.joiningCategory,defaults.company,defaults.region,defaults.site,defaults.department,defaults.subdepartment,defaults.designation,photo,photo2]);
  useEffect(()=>{const source=`${defaults.department} ${defaults.designation}`.toLowerCase();const automatic=source.includes('driver')?'Driver':source.includes('operator')?'Operator':'';if(automatic&&automatic!==employeeCategory)setEmployeeCategory(automatic);},[defaults.department,defaults.designation]);
  const showMineCompliance=employeeGroup==='OB / COAL'&&['Driver','Staff','Operator'].includes(employeeCategory);
@@ -472,6 +480,7 @@ function JoiningForm({employeeGroup,onSave,onTrialSaved,defaults,subdepartments,
    <div className="joining-heading"><div><h2>{activeSteps[step]}</h2><p>Complete all applicable details from the Caliber Mining And Logistics Ltd employee joining form.</p></div>{activeStep==='Joining & Personal Details'&&<CandidatePhotoHeader photo={candidatePhoto} remove={()=>{dirty.current=true;candidatePhotoRemover.current();latestPersist.current();}} upload={()=>formRef.current?.querySelector<HTMLInputElement>('input[name="Upload Candidate photo"]')?.click()}/>}{activeSteps[step]==='Document Checklist'&&<button type="button" className="bulk-upload-button" onClick={()=>document.getElementById('bulk-documents')?.click()}><Upload/>Bulk Upload</button>}</div>
    <div data-joining-step="0" hidden={activeStep!=='Upload Aadhaar Card'}><AadhaarUpload form={formRef} photo={photo} photo2={photo2} onPhoto={file=>{dirty.current=true;setPhoto(file);}} onPhoto2={file=>{dirty.current=true;setPhoto2(file);}}/></div>
    {activeSteps.filter(section=>section!=='Upload Aadhaar Card').map(section=>{const index=activeSteps.indexOf(section);return <div key={section} data-joining-step={index} hidden={section!==activeStep}><JoiningStep activeStep={section} employeeGroup={employeeGroup} employeeCategory={employeeCategory} setEmployeeCategory={setEmployeeCategory} visibleDocuments={visibleDocuments} defaults={formDefaults} subdepartments={subdepartments} designations={designations} onCandidatePhotoChange={setCandidatePhoto} onPhotoRemoveReady={remove=>{candidatePhotoRemover.current=remove;}}/></div>})}
+   <input type="hidden" name={AADHAAR_LOCK_FIELD} defaultValue=""/>
    <input type="hidden" name="Joining Approval" defaultValue={approval.status==='APPROVED'?`${approval.approvedBy||'Approved'}${approval.approvedAt?' · '+new Date(approval.approvedAt).toLocaleString():''}`:''}/>
    {approval.status==='APPROVED'&&activeStep==='Document Checklist'&&<p className="employee-import-status">Joining approved – {approval.approvedBy}{approval.approvedAt?' · '+new Date(approval.approvedAt).toLocaleString():''}</p>}
    {gate&&<JoiningApprovalGate draftId={draftId.current} info={approvalInfo()} onApproved={approved} onClose={()=>setGate(false)}/>}

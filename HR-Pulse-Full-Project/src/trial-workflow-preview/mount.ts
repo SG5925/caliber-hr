@@ -230,6 +230,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     resetAadhaarHistoryCheck();
     aadhaar.reset();
     $<HTMLFormElement>('#single').reset();
+    $$<HTMLInputElement>('#single input[data-aadhaar-locked]').forEach(control => { control.readOnly = false; delete control.dataset.aadhaarLocked; control.title = ''; });
     $('#photoBox').innerHTML = 'Upload photo<br><span class="muted">camera or gallery</span>';
     $('#f_vother').hidden = true;
     $<HTMLInputElement>('#f_trial').value = localDateTime();
@@ -245,6 +246,12 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     aadhaarScanPending = busy;
     updateSingleActions();
   }
+  /* Values read from the Aadhaar card are locked: HR cannot retype them, only a new scan can replace them. */
+  function lockScanned(control: HTMLInputElement) {
+    control.readOnly = true;
+    control.dataset.aadhaarLocked = '1';
+    control.title = 'Filled from the Aadhaar card – cannot be edited';
+  }
   function fillAadhaarDetails(details: AadhaarDetails) {
     if (!aadhaarScanPending || effects.signal.aborted) return '';
     const enteredNumber = digits(value('#f_aadhaar'));
@@ -258,13 +265,14 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     let filled = 0;
     for (const [selector, detail] of fields) {
       const control = $<HTMLInputElement>(selector);
-      if (!detail || control.value.trim()) continue;
+      if (!detail) continue;
+      if (control.value.trim() && !control.readOnly) continue;
       control.value = detail;
-      if (control.value) filled++;
+      if (control.value) { filled++; lockScanned(control); }
     }
     if(/^\d{12}$/.test(details.uid)&&digits(value('#f_aadhaar'))===details.uid)void checkAadhaarHistory(details.uid);
     return filled
-      ? 'Aadhaar details filled. Verify them before submitting.'
+      ? 'Aadhaar details filled and locked – they come from the card and cannot be edited.'
       : 'The scan added no new details. Review the form or enter the missing details manually.';
   }
   function resetAadhaarHistoryCheck() {

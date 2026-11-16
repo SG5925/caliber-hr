@@ -176,3 +176,5 @@ textarea.paste{width:100%;min-height:70px;border:1px dashed var(--line-strong);b
 #ovList button.link,.link{border:0;background:none;color:var(--accent);padding:0;text-align:left;font-weight:600}
 button:disabled{opacity:.5;cursor:not-allowed}
 #tgText{width:100%;min-height:170px;padding:6px;margin:8px 0;resize:vertical}
+/* Fields filled from the Aadhaar scan are locked */
+.row input[data-aadhaar-locked]{background:#f3f4f6;color:#374151;border-bottom-style:solid;cursor:not-allowed}
