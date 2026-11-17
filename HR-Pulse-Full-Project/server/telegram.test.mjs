@@ -143,15 +143,31 @@ test('approval stage messages follow the agreed formats',async()=>{
  assert.equal(trialFormPdf(row,'Trial joining form').subarray(0,5).toString(),'%PDF-');
 });
 
-test('hierarchy recipients per stage: site steps, company-wide Office HR and Directors, office fallback',async()=>{
+test('trial approvals use the active Driver & Operator steps for the form group and site',async()=>{
  const {hierarchyRecipients}=await import('./telegram.mjs');
- const rows=[{code:'CMLL-CO',data:{code:'CMLL-CO',steps:[{label:'HR Executive',approvers:['mayuriumate']},{label:'HR Manager',approvers:['vinod']},{label:'Final approval — any one',approvers:['mohit']}]}},{code:'NCL-JAYANT',data:{code:'NCL-JAYANT',group:'NCL',steps:[{label:'HR Manager',approvers:['site']},{label:'Project Manager',approvers:['pm1']},{label:'Driver Trainer',approvers:['dt']},{label:'HR Manager — either one',approvers:['rhr']},{label:'Final approval — any one',approvers:['dir']}]}}];
- const db={query:async q=>({rows:q.includes('joiningHierarchies')?rows:[]})};
- const actors=async(stage,site)=>(await hierarchyRecipients(db,stage,{site})).map(r=>r.actor);
- assert.deepEqual(await actors('result','Jayant OB East'),['pm1']);
- assert.deepEqual(await actors('ohr','Jayant OB East'),['mayuriumate','vinod']);
- assert.deepEqual(await actors('director','Jayant OB East'),['dir','mohit']);
- assert.deepEqual(await actors('result','Nagpur CO'),['mayuriumate','vinod']);
- assert.deepEqual(await actors('director','Nagpur CO'),['mohit']);
- assert.deepEqual((await hierarchyRecipients(db,'part1')).map(r=>r.actor),['dt']);
+ const step=(label,...approvers)=>({label,approvers});
+ const rows=[
+  {code:'CMLL-CO',status:'ACTIVE',data:{steps:[step('HR Manager','nagpurhr'),step('Final approval — any one','nagpurdir')]}},
+  {code:'NCL-JAYANT',status:'ACTIVE',data:{group:'NCL',steps:[
+   step('HR Manager','site'),step('Project Manager','pm1'),step('Driver Trainer','dt'),
+   step('Office HR — either one','office'),step('HR Manager — either one','rhr'),step('Final approval — any one','dir'),
+  ],officeSteps:[step('Project Manager','officepm'),step('Final approval — any one','officedir')]}},
+  {code:'NCL-JAYANT-W',status:'ACTIVE',data:{steps:[step('Driver Trainer','westdt')]}},
+  {code:'NCL-DUDE',status:'DRAFT',data:{steps:[step('Driver Trainer','disabled')]}},
+  {code:'WCL-GAURI',status:'ACTIVE',data:{steps:[step('Driver Trainer','wcldt')]}},
+ ];
+ const db={query:async sql=>{assert.match(sql,/status='ACTIVE'/);return {rows:rows.filter(row=>row.status==='ACTIVE')};}};
+ const east={site:'Jayant OB East',region:'NCL',group:'OB / COAL'};
+ const actors=async(stage,target=east)=>(await hierarchyRecipients(db,stage,target)).map(r=>r.actor);
+ for(const [stage,actor] of Object.entries({siteHr:'site',result:'pm1',part1:'dt',ohr:'office',rhr:'rhr',director:'dir'})){
+  assert.deepEqual(await actors(stage),[actor]);
+ }
+ assert.deepEqual(await actors('all'),['site','pm1','dt','office','rhr','dir']);
+ assert.deepEqual(await actors('part1',{site:'NCL-JAYANT-W',group:'NCL'}),['westdt']);
+ assert.deepEqual(await actors('part1',{site:'Gauri Pauni OB 2nd',region:'WCL'}),['wcldt']);
+ assert.deepEqual(await actors('director',{site:'Nagpur CO',region:'Nagpur Corporate Office'}),['nagpurdir']);
+ assert.deepEqual(await actors('part1',{...east,region:'WCL'}),[]);
+ assert.deepEqual(await actors('part1',{...east,site:'Jayant OB'}),[]);
+ assert.deepEqual(await actors('part1',{...east,site:'Dudichua OB East'}),[]);
+ assert.deepEqual(await actors('part1',{...east,site:''}),[]);
 });

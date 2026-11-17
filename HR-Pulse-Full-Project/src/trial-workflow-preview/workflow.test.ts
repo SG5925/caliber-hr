@@ -7,7 +7,7 @@ import type {PrepareJoining} from './mount';
 import * as trialResultFiles from './trialResultFiles';
 import type {Trial} from './records';
 
-const scope = {company:'CMLL',site:'Jayant OB East',name:'Sample Signer',owner:'sample',department:'Driver'};
+const scope = {company:'CMLL',site:'Jayant OB East',region:'NCL',group:'OB / COAL',name:'Sample Signer',owner:'sample',department:'Driver'};
 let dispose: (()=>void)|undefined;
 function setup(overrides: Partial<typeof scope> = {},onCleared?: PrepareJoining) {
   dispose?.();

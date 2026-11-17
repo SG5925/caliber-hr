@@ -5,12 +5,10 @@
 import {api, savedSession} from '../api';
 import {utils as xlsxUtils, write as xlsxWrite} from 'xlsx';
 import {equipment, type Trial} from './records';
-import {loadSelection} from '../TrialForm';
-/* Region (NCL / WCL …) and employee group come from the top-bar selection; the server sends only to recipients scoped to this site / group. */
-const target = (scope: Scope) => {const sel = loadSelection(); return {site: scope.site || sel.site, region: sel.region, group: sel.employeeGroup, company: scope.company || sel.company};};
 
 export type Delivery = {message: string; recipients: number; connected: string[]; bot?: string; configured?: boolean; issues?: string[]};
-type Scope = {company: string; site: string; department: string};
+export type TrialScope = {company: string; site: string; region: string; group: string; department: string};
+const target = ({site, region, group, company}: TrialScope) => ({site, region, group, company});
 type Attachment = {name: string; mime: string; data: string};
 
 const fields = (row: Trial): Record<string,string> => ({
@@ -37,12 +35,12 @@ const grantOrThrow = () => {const grant = savedSession()?.grant; if (!grant) thr
 /* Human-readable delivery line for the popup. */
 export function deliveryStatus(d: Delivery, names: (key: string) => string = key => key) {
   if (d.configured===false) return 'Vehicle Trial Result bot is not configured on the server (TELEGRAM_TRIAL_BOT_TOKEN).';
-  if (!d.recipients) return 'No Telegram recipient is set for this step – add them under Telegram recipients.';
+  if (!d.recipients) return 'No Telegram recipient is set for this step – assign the approver in Approval Master.';
   const base = d.connected.length ? `Sent to ${d.connected.map(names).join(', ')} via @${d.bot||'the trial bot'}.` : 'Queued – the recipients have not opened the trial bot yet (they must tap Start).';
   return d.issues?.length ? base+' '+d.issues.join(' · ') : base;
 }
 
-export async function sendPart1(created: Trial[], scope: Scope): Promise<Delivery> {
+export async function sendPart1(created: Trial[], scope: TrialScope): Promise<Delivery> {
   const grant = grantOrThrow();
   const out = await api<{batchId: string; telegram: Delivery}>(grant, 'telegram/trial-part1', 'POST', {
     heading: scope.site, ...target(scope), department: scope.department, trialBy: 'driver trainer', batchId: created[0]?.batch || '',
@@ -51,7 +49,7 @@ export async function sendPart1(created: Trial[], scope: Scope): Promise<Deliver
   return out.telegram;
 }
 
-export async function sendResults(changed: Trial[], resultFiles: Map<string, File | undefined>, trialBy: string, scope: Scope): Promise<Delivery> {
+export async function sendResults(changed: Trial[], resultFiles: Map<string, File | undefined>, trialBy: string, scope: TrialScope): Promise<Delivery> {
   const grant = grantOrThrow();
   const batchId = changed.length > 1 ? (changed[0].batch || 'B-'+changed[0].formNo.replace(/\W+/g,'').slice(-6).toUpperCase()) : '';
   const rows = await Promise.all(changed.map(async row => ({
@@ -85,7 +83,7 @@ export async function sendResults(changed: Trial[], resultFiles: Map<string, Fil
 }
 
 /* Approval stages: PM → Office HR → Regional HR → Directors (final → "Joining approved" to everyone). */
-export async function sendApproval(changed: Trial[], reviewer: 'pm'|'ohr'|'rhr'|'director', approved: boolean, note: string, by: string, at: string, resultFiles: (id: string) => Promise<File | undefined>, scope: Scope): Promise<Delivery> {
+export async function sendApproval(changed: Trial[], reviewer: 'pm'|'ohr'|'rhr'|'director', approved: boolean, note: string, by: string, at: string, resultFiles: (id: string) => Promise<File | undefined>, scope: TrialScope): Promise<Delivery> {
   const grant = grantOrThrow();
   const rows = await Promise.all(changed.map(async row => ({
     formNo: row.formNo, fields: fields(row), history: row.history, trialBy: row.outcome?.trainer || '',

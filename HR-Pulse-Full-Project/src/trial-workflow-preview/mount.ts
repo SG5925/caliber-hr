@@ -7,13 +7,13 @@ import {candidateProblem, canApprove, date, DOCS, equipment, indiaDay, indiaTime
   NEXT, nextNumber, post, resultMessage, ROLES, STAGES, VEHICLES, type Candidate, type Outcome, type Role, type Trial} from './records';
 import {approvalTable, detailView, esc, overviewTable, trainerForms} from './views';
 import {getTrialResultFile, removeTrialResultFiles, saveTrialResultFiles} from './trialResultFiles';
-import {deliveryStatus, fetchDecisions, sendApproval, sendPart1, sendResults} from './telegramSend';
+import {deliveryStatus, fetchDecisions, sendApproval, sendPart1, sendResults, type TrialScope} from './telegramSend';
 import {siteDisplayName} from '../siteNames';
 import {findPreviousTrial} from './previousTrial';
 import type {TrialMatch} from '../TrialAadhaarHistory';
 
 type Tab = 'aadhaar' | 'hr' | 'trainer' | 'approve' | 'overview';
-type Scope = {company: string; site: string; owner: string; legacyOwner?: string; name: string; department: string};
+type Scope = TrialScope & {owner: string; legacyOwner?: string; name: string};
 export type PrepareJoining = (rows: Trial[]) => Promise<(() => void) | void>;
 const tabs: Tab[] = ['aadhaar','hr','trainer','approve','overview'];
 const roleTab: Record<Role,Tab> = {hr:'aadhaar',trainer:'trainer',pm:'approve',ohr:'approve',rhr:'approve',director:'approve'};

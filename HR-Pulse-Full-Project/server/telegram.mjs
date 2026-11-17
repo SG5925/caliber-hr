@@ -72,25 +72,49 @@ const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
 export function recipientInScope(r,target){const scope=String(r.scope||'').split(',').map(norm).filter(Boolean);if(!scope.length||scope.includes('all'))return true;
  const keys=[target?.site,target?.siteCode,target?.region,target?.company,target?.group].map(norm).filter(Boolean);return scope.some(x=>keys.some(k=>k===x||k.startsWith(x+' ')||x.startsWith(k+' ')));}
 export const scopedRecipients=(list,target)=>target?list.filter(r=>recipientInScope(r,target)):list;
-/* Recipients taken from Approval Master › Hierarchy (joining hierarchy per site), so nothing has to be typed twice:
-   part1  → the site's "Driver Trainer" step
-   result → Project Manager, Office HR, HR Manager — either one (regional), Final approval (directors) */
 const HIERARCHY_STEPS={part1:['Driver Trainer'],result:['Project Manager'],ohr:['Office HR — either one'],rhr:['HR Manager — either one'],director:['Final approval — any one'],siteHr:['HR Manager'],
  all:['HR Manager','Project Manager','Driver Trainer','Office HR — either one','HR Manager — either one','Final approval — any one']};
+const trialSiteAliases={
+ 'NCL-DUDE':['Dudichua OB East','Dhudhichua OB East'],
+ 'NCL-DUDW':['Dudichua OB West','Dhudhichua OB West'],
+ 'WCL-DHOPTALA':['Dhoptala OB 2nd'],
+ 'WCL-GAURI':['Gauri Pauni OB 2nd'],
+ 'WCL-LALPETH':['Lalpeth OB'],
+ 'CMLL-CO':['Nagpur CO','Nagpur Corporate Office'],
+ 'CMLL-HO':['Chandrapur Head Office'],
+};
+function trialHierarchySite(target){
+ const site=norm(target.site);
+ // Region is the hierarchy group. Older requests may carry only the site or employee category.
+ const selectedGroup=norm(target.region)||norm(target.group);
+ const group=({'nagpur corporate office':'corporate office','chandrapur head office':'chandrapur ho'})[selectedGroup]||selectedGroup;
+ return hierarchyTemplates.find(template=>{
+  const matchesGroup=!group||['ob / coal','corporate / ho'].includes(group)||group===norm(template.group);
+  return matchesGroup&&[template.code,template.name,...(trialSiteAliases[template.code]||[])].some(name=>norm(name)===site);
+ });
+}
 export async function hierarchyRecipients(db,stage,target){
- const rows=(await db.query("SELECT code,data FROM hr_records WHERE kind='joiningHierarchies'")).rows;
- const out=[];for(const t of hierarchyTemplates){const saved=rows.find(r=>r.code===t.code);const data={...t,...withOfficeHr(withDriverTrainer(currentHierarchy(saved?.data)))};
-  /* Nagpur Office (CMLL-CO) HR Executive / HR Manager are the Office HR for every site, and its "Final approval" list is the
-     Directors for every site – both are company-wide, so they are included whatever the site. */
-  const officeHr=['ohr','all'].includes(stage)&&t.code==='CMLL-CO';
-  const directors=['director','all'].includes(stage)&&t.code==='CMLL-CO';
-  if(!officeHr&&!directors&&target&&!recipientInScope({scope:t.name},target))continue;
-  const labels=officeHr?['HR Executive','HR Manager',...(directors?['Final approval — any one']:[])]:directors?['Final approval — any one']:HIERARCHY_STEPS[stage];
-  for(const step of data.steps||[])if(labels.includes(step.label))for(const actor of step.approvers||[]){const a=String(actor).trim().toLowerCase();const global=officeHr||directors;if(a&&!out.some(r=>r.actor===a&&r.site===t.name))out.push({actor:a,name:a,phone:'',scope:global?'ALL':t.name,site:global?'All sites (Nagpur Office)':t.name,role:global?`${step.label==='Final approval — any one'?'Directors':'Office HR'} – ${step.label}`:step.label,source:'hierarchy'});}}
- /* A stage with nobody at the site (e.g. PM / Regional HR for an office) falls back to Nagpur Office HR so the chain never stalls. */
- if(!out.length&&target&&['result','rhr','part1','siteHr'].includes(stage)){const co=hierarchyTemplates.find(t=>t.code==='CMLL-CO');const saved=rows.find(r=>r.code==='CMLL-CO');const data={...co,...currentHierarchy(saved?.data)};
-  for(const step of data.steps||[])if(['HR Executive','HR Manager'].includes(step.label))for(const actor of step.approvers||[]){const a=String(actor).trim().toLowerCase();if(a&&!out.some(r=>r.actor===a))out.push({actor:a,name:a,phone:'',scope:'ALL',site:'Fallback – Nagpur Office',role:`${step.label} (no ${stage==='result'?'PM':stage==='rhr'?'Regional HR':stage==='part1'?'Driver Trainer':'Site HR'} at this site)`,source:'hierarchy'});}}
- return out;}
+ const site=target&&trialHierarchySite(target);
+ if(target&&!site)return [];
+ const rows=(await db.query("SELECT code,data FROM hr_records WHERE kind='joiningHierarchies' AND status='ACTIVE'")).rows;
+ const labels=HIERARCHY_STEPS[stage]||[];
+ const recipients=[];
+ for(const template of site?[site]:hierarchyTemplates){
+  const saved=rows.find(row=>row.code===template.code);
+  const data=withOfficeHr(withDriverTrainer(currentHierarchy(saved?.data)));
+  const seen=new Set();
+  for(const step of data?.steps||[]){
+   if(!labels.includes(step.label))continue;
+   for(const username of step.approvers||[]){
+    const actor=norm(username);
+    if(!actor||seen.has(actor))continue;
+    seen.add(actor);
+    recipients.push({actor,name:actor,phone:'',scope:template.name,site:template.name,role:step.label,source:'hierarchy'});
+   }
+  }
+ }
+ return recipients;
+}
 /* Manual list (scoped) + hierarchy for a site, de-duplicated by actor. */
 export async function trialRecipientsFor(db,stage,target){const manual=scopedRecipients(await trialRecipients(db,stage),target),auto=await hierarchyRecipients(db,stage,target);const seen=new Set(manual.map(recipientActor));return [...manual,...auto.filter(r=>!seen.has(r.actor))];}
 /* stage 'result' = Part 2 result messages (default list); stage 'part1' = "Trial Form Submitted" messages to the driver trainer. */
@@ -478,7 +502,7 @@ export function createTelegram(pool){
    const prev=(await pool.query("SELECT data FROM hr_records WHERE kind='trialForms' AND code=$1",[formNo])).rows[0]?.data||{};
    const record={...prev,formNo,heading:String(input.heading||'').slice(0,120),site:String(input.site||'').slice(0,80),company:String(input.company||'').slice(0,120),department:String(input.department||'').slice(0,80),fields:cleanFields(f),stage:'RESULT',status:'Sent to PM for approval',trialBy:String(input.trialBy||f['Examiner name']||profile.name||profile.actor).slice(0,80),resultBy:profile.actor,resultAt:new Date().toISOString(),savedBy:profile.actor,savedAt:new Date().toISOString()};
    const message=trialResultMessage(record,profile.name||profile.actor);
-   const recipients=(await trialRecipients(pool)).map(recipientActor);
+   const recipients=(await trialRecipientsFor(pool,'result',{site:record.site,region:input.region,company:record.company,group:input.group})).map(recipientActor);
    let id;await tx(async db=>{
     const aadhaar=String(f['Aadhaar no.']||f['Aadhaar No.']||f['Aadhaar No. *']||'').replace(/\D/g,'');
     if(!/^\d{12}$/.test(aadhaar))fail('Enter a 12-digit Aadhaar number');

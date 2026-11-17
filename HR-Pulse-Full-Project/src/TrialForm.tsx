@@ -50,14 +50,14 @@ type TrialFormProps = {
 export default function TrialForm({selection,onPassed,owner: draftOwner,legacyOwner}: TrialFormProps) {
  const profile = savedSession()?.profile;
  const owner=draftOwner??(profile?.actor||profile?.username||profile?.email||'local');
- const {company, site, department} = selection;
+ const {company, site, department, region, employeeGroup} = selection;
  async function join(rows: Trial[]) {
   const draft=await prepareTrialJoining(rows,selection,owner);
   if (!draft?.trialHandoff) return;
   saveTrialHandoff(draft.trialHandoff,{});
   return ()=>onPassed?.(draft);
  }
- return <Suspense fallback={<p role="status">Loading Trial Form…</p>}><TrialWorkflowPreview owner={owner} legacyOwner={legacyOwner} name="" site={site} company={companyShort[company]||company} department={department} onCleared={onPassed?join:undefined}/></Suspense>;
+ return <Suspense fallback={<p role="status">Loading Trial Form…</p>}><TrialWorkflowPreview owner={owner} legacyOwner={legacyOwner} name="" site={site} region={region} group={employeeGroup} company={companyShort[company]||company} department={department} onCleared={onPassed?join:undefined}/></Suspense>;
 }
 
 export function CurrentTrialForm({selection,onPassed,canManage=false}:{selection:TrialSelection;onPassed?:(handoff:TrialHandoff)=>void;canManage?:boolean}){
@@ -97,7 +97,7 @@ export function CurrentTrialForm({selection,onPassed,canManage=false}:{selection
 
   const grant=savedSession()?.grant;if(!grant){setError('Sign in again to save the trial form.');return;}
   setSaving(true);let tg:{result:string;message:string;connected:string[];recipients:number;bot?:string;configured?:boolean;issues?:string[]}|null=null;
-  try{const out=await api<{result:string;telegram:{recipients:number;connected:string[];message:string;bot?:string;configured?:boolean;issues?:string[]}}>(grant,'telegram/trial-forms','POST',{formNo:no.current,heading,site:selection.site,company:selection.company,department:selection.department,fields:data});tg={result:out.result,...out.telegram};try{const list=JSON.parse(localStorage.getItem(DRAFT_KEY)||'[]');list.unshift(record);localStorage.setItem(DRAFT_KEY,JSON.stringify(list.slice(0,200)));}catch{/* ignore */}localStorage.removeItem(AUTOSAVE);setPopup(tg);removeTrialDrafts([no.current]);}
+  try{const out=await api<{result:string;telegram:{recipients:number;connected:string[];message:string;bot?:string;configured?:boolean;issues?:string[]}}>(grant,'telegram/trial-forms','POST',{formNo:no.current,heading,site:selection.site,region:selection.region,group:selection.employeeGroup,company:selection.company,department:selection.department,fields:data});tg={result:out.result,...out.telegram};try{const list=JSON.parse(localStorage.getItem(DRAFT_KEY)||'[]');list.unshift(record);localStorage.setItem(DRAFT_KEY,JSON.stringify(list.slice(0,200)));}catch{/* ignore */}localStorage.removeItem(AUTOSAVE);setPopup(tg);removeTrialDrafts([no.current]);}
   catch(e){setError((e as Error).message);setSaving(false);return;}
   finally{setSaving(false);}
   if(data['Result']==='PASS'){const v=(n:string)=>(f.elements.namedItem(n) as HTMLInputElement|null)?.value||'',dobRaw=v('Date of Birth'),post=data['If PASS – recommended for']||data['Post applied for']||selection.department;
@@ -197,8 +197,8 @@ export function TrialRecipients({stage='result'}:{stage?:'part1'|'result'}){
   <p className="help-text">{stage==='part1'?'When Site HR clicks Submit Part 1 (single, or a batch with its PDF sheet), these people get the message on Telegram. ':'Every trial result (single PASS / FAIL, or the batch result with the Excel sheet and attachments) is sent to these people on Telegram. '} Results go out from the separate <b>Vehicle Trial Result</b> bot{bot?` (@${bot})`:''}. If the person already uses the leave bot, enter their Pulse username; they only need to open the trial bot once and tap <b>Start</b>. Otherwise create their connect link, share it on Telegram, and they tap <b>Start</b>. After that every result reaches them automatically.{!configured&&' Telegram bot is not configured on the server yet.'}</p>
   {err&&<p className="employee-import-error" role="alert">{err}</p>}{msg&&<p className="shift-success" role="status">{msg}</p>}
   <p className="help-text"><b>Sites / groups:</b> comma-separated site names and groups (region such as NCL / WCL, company, or employee group). A message for a site goes only to people whose list names that site or its group; leave blank for every site. Example: the Jayant driver trainer gets <i>Jayant OB East, Jayant OB West</i>; the NCL Regional HR gets <i>NCL</i>.</p>
-  <div className="tf-auto"><h4>From Approval Master › Hierarchy (automatic – edit there)</h4>
-   <p className="help-text">{stage==='part1'?'Each site\'s Driver Trainer step.':'Stage by stage: trial result → Project Manager; PM approved → Office HR (site step + Nagpur Office HR); Office HR approved → HR Manager — either one (Regional HR); Regional HR approved → Final approval (Directors); Directors approved → everyone in the chain + Site HR.'} These people receive the message for their own site only. The manual list below is for extra people.</p>
+  <div className="tf-auto"><h4>From Approval Master › Hierarchy › Driver &amp; Operator</h4>
+   <p className="help-text">{stage==='part1'?'Each site\'s Driver Trainer step.':'Stage by stage: trial result → Project Manager; PM approved → Office HR; Office HR approved → HR Manager — either one (Regional HR); Regional HR approved → Final approval (Directors); Directors approved → everyone in the chain + Site HR.'} These people receive the message for their own site only. The manual list below is for extra people.</p>
    {auto.length?<table className="tf-recipient-table"><thead><tr><th>Site</th><th>Role</th><th>Pulse username</th><th>Status</th><th></th></tr></thead><tbody>{auto.map((r,i)=><tr key={r.site+'|'+r.actor+i}><td>{r.site}</td><td>{r.role}</td><td>{r.actor}</td><td>{r.connected?<span className="salary-status approved">Connected</span>:<span className="salary-status pending">Not connected</span>}{r.issue&&<small style={{display:'block',color:'#9a5a00',marginTop:4}}>{r.issue}</small>}{links['h:'+r.actor]&&<div className="tf-link"><input readOnly value={links['h:'+r.actor]} onFocus={e=>e.currentTarget.select()}/><a href={`https://t.me/share/url?url=${encodeURIComponent(links['h:'+r.actor])}&text=${encodeURIComponent('Open this link and tap Start to receive vehicle trial messages from Caliber HR')}`} target="_blank" rel="noreferrer">Share on Telegram</a></div>}</td><td className="salary-site-actions"><button type="button" className="shift-remove" onClick={()=>void connect('h:'+r.actor,{name:r.actor||'',phone:'',actor:r.actor})}>{links['h:'+r.actor]?'New link':'Connect link'}</button></td></tr>)}</tbody></table>:<p className="help-text">No usernames assigned yet in Approval Master › Hierarchy for these steps.</p>}
   </div>
   <h4>Extra people (manual)</h4>
