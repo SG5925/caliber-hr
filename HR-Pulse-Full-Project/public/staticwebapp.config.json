@@ -13,6 +13,7 @@
     ".tar": "application/octet-stream"
   },
   "globalHeaders": {
+    "Content-Security-Policy": "frame-ancestors 'self' https://pulse.cmll.in",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin"
   }

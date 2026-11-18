@@ -11,7 +11,7 @@ const portals = [
   {name: 'MIS', href: 'https://pulse-ll.cmll.in/api/mis-credentials/start', Icon: FileBarChart},
 ];
 
-export default function HrLogin({onLogin, preload}: {onLogin: (session: Session) => void; preload: () => Promise<unknown>}) {
+export default function HrLogin({onLogin, preload, embedded}: {onLogin: (session: Session) => void; preload: () => Promise<unknown>; embedded: boolean}) {
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -39,8 +39,8 @@ export default function HrLogin({onLogin, preload}: {onLogin: (session: Session)
     }
   }
 
-  return <div className="hr-login" data-theme={night ? 'night' : 'day'}>
-    <aside className="hr-login-visual">
+  return <div className="hr-login" data-embedded={embedded || undefined} data-theme={night ? 'night' : 'day'}>
+    {!embedded && <aside className="hr-login-visual">
       <img className="hr-login-logo" src="/pulse-logo.png" alt="Caliber Pulse"/>
       <nav className="hr-login-portals" aria-label="Caliber Pulse applications">
         {portals.map(({name, href, Icon}) => <a key={name} href={href}><Icon aria-hidden="true"/><span>{name}</span></a>)}
@@ -50,16 +50,16 @@ export default function HrLogin({onLogin, preload}: {onLogin: (session: Session)
         <h1>HR and operations.<br/>One workspace.</h1>
         <p>Employee records, attendance and approvals across sites.</p>
       </div>
-    </aside>
+    </aside>}
     <main className="hr-login-panel">
-      <button type="button" className="hr-login-theme" aria-label="Night theme" aria-pressed={night} onClick={() => setNight(!night)}>
+      {!embedded && <button type="button" className="hr-login-theme" aria-label="Night theme" aria-pressed={night} onClick={() => setNight(!night)}>
         {night ? <Moon aria-hidden="true"/> : <Sun aria-hidden="true"/>}{night ? 'Night' : 'Day'}
-      </button>
+      </button>}
       <form className="login-card hr-login-form" onSubmit={signIn} aria-labelledby="hr-sign-in-heading">
-        <nav className="hr-login-options" aria-label="Account access">
+        {!embedded && <nav className="hr-login-options" aria-label="Account access">
           <span aria-current="page"><User aria-hidden="true"/>Sign in</span>
           <a href={pulsePortal}><LockKeyhole aria-hidden="true"/><span>Reset password<small>Open Pulse for OTP recovery</small></span></a>
-        </nav>
+        </nav>}
         <h2 id="hr-sign-in-heading">HR sign in</h2>
         <p className="muted">Use your existing Caliber Pulse username and password.</p>
         <div className="hr-login-access"><ShieldCheck aria-hidden="true"/>Your administrator assigns HR access.</div>

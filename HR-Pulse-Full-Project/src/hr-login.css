@@ -152,3 +152,14 @@
   .hr-login-message { display: none; }
   .hr-login-panel { padding-top: 68px; }
 }
+
+.hr-login[data-embedded] {
+  grid-template-columns: minmax(0, 1fr);
+  background: transparent;
+}
+
+.hr-login[data-embedded] .hr-login-panel {
+  padding: 8px 5px 24px;
+  align-items: start;
+  background: transparent;
+}

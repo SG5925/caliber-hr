@@ -5,12 +5,19 @@ import HrLogin from './HrLogin';
 const loadWorkspace=()=>import('./Workspace');
 const Workspace=lazy(loadWorkspace);
 
+const pulseOrigin = 'https://pulse.cmll.in';
+const embedded = window.parent !== window && new URLSearchParams(window.location.search).get('embedded') === 'pulse';
+
 export default function App(){
   const[session,setSession]=useState(savedSession);
   const[config,setConfig]=useState<HRConfig>();
   const[error,setError]=useState('');
   const[attempt,setAttempt]=useState(0);
   const pending=useRef<{grant:string;attempt:number;request:Promise<HRConfig>}|undefined>(undefined);
+
+  useEffect(() => {
+    if (embedded) window.parent.postMessage({type: 'caliber-hr:workspace', open: Boolean(session?.grant)}, pulseOrigin);
+  }, [session?.grant]);
 
   useEffect(()=>{
     const expired=()=>{setConfig(undefined);setSession(null);};
@@ -44,7 +51,7 @@ export default function App(){
     if(grant)void pulse('logout',{grant}).catch(()=>{});
   }
 
-  if(!session?.grant)return <HrLogin preload={loadWorkspace} onLogin={next=>{pending.current=undefined;setError('');setSession(next);}}/>;
+  if(!session?.grant)return <HrLogin embedded={embedded} preload={loadWorkspace} onLogin={next=>{pending.current=undefined;setError('');setSession(next);}}/>;
   const opening=<div className="loading-screen" role="status">Opening your HR workspace…</div>;
   if(error)return <div className="loading-screen"><p role="alert">{error}</p><button onClick={()=>{setError('');setAttempt(value=>value+1);}}>Retry connection</button> <button onClick={logout}>Sign out</button></div>;
   return config?<Suspense fallback={opening}><Workspace session={session} initialConfig={config} logout={logout}/></Suspense>:opening;
