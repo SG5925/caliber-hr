@@ -1,0 +1,154 @@
+.hr-login {
+  --login-ink: #30233d;
+  --login-muted: #526581;
+  --login-outline: #e1d3eb;
+  --login-tint: #f6effa;
+  --login-accent: #522e90;
+  display: grid;
+  grid-template-columns: 47fr 53fr;
+  min-height: 100vh;
+  color: var(--login-ink);
+  background: #fcf9fb;
+}
+
+.hr-login-visual {
+  padding: clamp(28px, 5vw, 68px) clamp(24px, 6vw, 130px);
+  color: white;
+  background:
+    linear-gradient(#ffffff08 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(90deg, #ffffff08 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(145deg, #4d2b87, #822883 56%, #b83369);
+}
+
+.hr-login-logo {
+  display: block;
+  width: min(214px, 100%);
+  padding: 16px 22px;
+  background: white;
+  border-radius: 12px;
+}
+
+.hr-login-portals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.hr-login-portals > * {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 78px;
+  padding: 12px clamp(10px, 1.5vw, 22px);
+  border: 1px solid #ffffff62;
+  border-radius: 13px;
+  background: #ffffff14;
+  color: white;
+  font-weight: 700;
+}
+
+.hr-login-portals svg { flex: 0 0 23px; }
+.hr-login-portals a:hover { background: #ffffff2c; }
+.hr-login-portals .hr-login-current { background: white; color: #522e90; }
+
+.hr-login-message { margin-top: clamp(30px, 5vw, 74px); }
+.hr-login-message h1 { font: 700 clamp(34px, 4vw, 66px)/1.07 Manrope, sans-serif; margin: 0 0 14px; }
+.hr-login-message p { margin: 0; color: #f8e9f5; line-height: 1.6; }
+
+.hr-login-panel {
+  position: relative;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: 76px clamp(20px, 5vw, 76px) 48px;
+  background: radial-gradient(ellipse at top right, #f9e8f1, transparent 65%);
+}
+
+.hr-login-theme {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--login-outline);
+  border-radius: 30px;
+  padding: 7px 13px;
+  color: var(--login-accent);
+  background: var(--login-tint);
+  font-size: 13px;
+}
+
+.hr-login-theme svg { width: 17px; height: 17px; }
+.hr-login .hr-login-form { width: min(100%, 490px); }
+.hr-login .hr-login-form h2 { color: var(--login-ink); margin-top: 26px; font-size: clamp(29px, 3vw, 40px); }
+.hr-login .muted { color: var(--login-muted); margin-bottom: 20px; line-height: 1.55; }
+
+.hr-login-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--login-outline);
+  border-radius: 13px;
+  background: var(--login-tint);
+}
+
+.hr-login-options > * {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  padding: 10px;
+  color: var(--login-accent);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.hr-login-options > span { border-color: var(--login-outline); background: #8452b51c; }
+.hr-login-options a:hover { text-decoration: underline; }
+.hr-login-options svg, .hr-login-access svg { flex: 0 0 19px; }
+.hr-login-options small { display: block; margin-top: 3px; color: var(--login-muted); font-weight: 500; }
+
+.hr-login-access {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin: 0 0 20px;
+  border: 1px solid var(--login-outline);
+  border-radius: 9px;
+  color: var(--login-accent);
+  background: var(--login-tint);
+  font-size: 13px;
+}
+
+.hr-login .input-wrap input { min-width: 0; }
+.hr-login .remember { color: var(--login-muted); }
+
+.hr-login[data-theme="night"] {
+  --login-ink: #f7edf9;
+  --login-muted: #d0c1dc;
+  --login-outline: #57446b;
+  --login-tint: #2b203a;
+  --login-accent: #e6c7ff;
+  background: #1b1524;
+}
+
+.hr-login[data-theme="night"] .hr-login-panel { background: radial-gradient(ellipse at top right, #37233e, transparent 65%); }
+.hr-login[data-theme="night"] .input-wrap { background: #241b31; border-color: var(--login-outline); }
+.hr-login[data-theme="night"] .input-wrap input { color: var(--login-ink); color-scheme: dark; }
+
+@media (max-width: 760px) {
+  .hr-login { grid-template-columns: minmax(0, 1fr); }
+  .hr-login-visual { padding: 20px; }
+  .hr-login-logo { width: 155px; padding: 10px 15px; }
+  .hr-login-portals { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); margin-top: 14px; gap: 8px; }
+  .hr-login-portals > * { min-height: 44px; font-size: 13px; gap: 6px; }
+  .hr-login-portals svg { flex-basis: 16px; }
+  .hr-login-message { display: none; }
+  .hr-login-panel { padding-top: 68px; }
+}
