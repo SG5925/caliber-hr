@@ -446,6 +446,11 @@ app.post('/api/telegram/webhook', async (rq, rs) => {
 // 3) Scheduled jobs (node-cron): 10:00 daily summary · 11:00 missing-punch alerts · lock reminder on 1st/2nd
 app.listen(3000);</script>
 
+<dialog id="delete-punch-log-dialog" aria-labelledby="delete-punch-log-message">
+  <p id="delete-punch-log-message"></p>
+  <button type="button" class="btn" autofocus onclick="this.closest('dialog').close()">Cancel</button>
+  <button type="button" class="btn" onclick="this.closest('dialog').close('delete')">Delete log</button>
+</dialog>
 <script>window.PUNCH_DEFAULT={"month":"2026-02","label":"Feb 2026","site":"Jayant OB","days":28,"emps":[]};</script>
 <script>window.REAL_DEFAULT={"month":"2026-02","label":"Feb 2026","site":"Jayant OB","days":28,"emps":[]};</script>
 <script>
@@ -1186,7 +1191,14 @@ function plVerify(id,d){if(R().ro){toast('View only');return}const e=PL.data.emp
 function plExport(){const D=PL.data,d=PL.day;const L=[['Device ID','Emp ID','Name','Designation','Date','Sheet status','IN','OUT','Hours','Shift','Double shift','Night','System status','Verified reason'].join(',')];
   D.emps.forEach(e=>{const x=plDay(e,d);L.push([e[1],e[0],`"${e[2]}"`,`"${e[3]}"`,`${d} ${D.label}`,x.st,hm(x.i),hm(x.o),x.h!=null?h1(x.h):'',x.sh,x.dbl?'Y':'',x.night?'Y':'',x.sys,x.v?`"${x.v.reason}"`:''].join(','))});
   const b=new Blob([L.join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`essl_punch_log_${pad(d)}_${D.label.replace(/\s/g,'_')}.csv`;a.click();toast('Day exported')}
-function plDelete(){const D=PL.data;if(!D||!D.emps.length)return;if(!confirm(`Delete the punch log (${D.emps.length} employees · ${D.label||''})? Verification notes on it will be removed too.`))return;
+function plDelete(){const D=PL.data;if(!D||!D.emps.length)return;
+  const dialog=$('delete-punch-log-dialog');
+  $('delete-punch-log-message').textContent=`Delete the punch log (${D.emps.length} employees · ${D.label||''})? Verification notes on it will be removed too.`;
+  dialog.returnValue='';
+  dialog.addEventListener('close',()=>{if(dialog.returnValue==='delete'&&PL.data===D)removePunchLog(D);},{once:true});
+  dialog.showModal();
+}
+function removePunchLog(D){
   PL.data={...window.PUNCH_DEFAULT,emps:[]};PL.ver={};PL._t=null;PL.day=null;PL.src='No punch log uploaded yet – upload the ESSL export (.xlsx)';
   AUDIT.unshift({ts:new Date(),user:R().user,role:R().label,action:`Punch log deleted (${D.emps.length} employees · ${D.label||''})`});toast('Punch log deleted.');VIEWS.punch();}
 async function plUpload(input){const f=input.files[0];if(!f)return;try{toast('Reading '+f.name+'…');await loadXLSX();const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});
