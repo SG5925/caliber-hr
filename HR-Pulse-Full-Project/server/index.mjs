@@ -48,6 +48,7 @@ const releaseFile = await readFile(new URL('./release.json',import.meta.url),'ut
   return '{}';
 });
 const server = createApi({ query: sql => pool.query(sql), service:createService(pool), authenticate,
+  poolStats: () => ({ idle: pool.idleCount, waiting: pool.waitingCount }),
   allowedOrigin: process.env.FRONTEND_ORIGIN, release:JSON.parse(releaseFile).commit });
 server.listen(Number(process.env.PORT || 8080), '0.0.0.0');
 for (const signal of ['SIGTERM', 'SIGINT']) {

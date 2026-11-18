@@ -4,11 +4,22 @@ import App from './App';
 import * as joiningDrafts from './joiningDrafts';
 import {DOCS,type Trial} from './trial-workflow-preview/records';
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();sessionStorage.clear();localStorage.clear();});
-it('hides Administration even when assigned in the Pulse session',async()=>{
+it('runs the Speed Test from the assigned Administration menu',async()=>{
  const profile={name:'Test user',actor:'test',permissions:{application:'HR',hrDesktopAccess:['Dashboard','Administration']}};
  sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43),profile}));
- vi.stubGlobal('fetch',async(url:string)=>new Response(JSON.stringify(url.endsWith('validate')?{profile}:url.endsWith('config')?{profile,modules:{}}:{counts:[],sites:[]})));
- render(<App/>);await screen.findByRole('heading',{name:'Dashboard'},{timeout:3000});expect(screen.queryByRole('button',{name:'Administration'})).toBeNull();
+ const now=new Date().toISOString();
+ const fetchMock=vi.fn(async(url:string)=>new Response(JSON.stringify(
+   url.endsWith('validate')?{profile}:url.endsWith('config')?{profile,modules:{}}:
+   url.endsWith('admin/speed-test')?{startedAt:now,checkedAt:now,database:{ok:true,ms:25},pool:null,eventLoop:null,operations:[]}:
+   {counts:[],sites:[]}
+ )));
+ vi.stubGlobal('fetch',fetchMock);
+ render(<App/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Administration'}));
+ fireEvent.click(screen.getByRole('button',{name:'Speed Test'}));
+ fireEvent.click(screen.getByRole('button',{name:'Run speed test'}));
+ expect(await screen.findByText('Speed normal')).toBeInTheDocument();
+ expect(screen.getByText('25 ms')).toBeInTheDocument();
 });
 describe('HR Pulse',()=>{it('shows login',()=>{render(<App/>);expect(screen.getByRole('heading',{name:'HR sign in'})).not.toBeNull()});it('toggles password visibility',()=>{render(<App/>);const password=screen.getByLabelText('Password');expect(password.getAttribute('type')).toBe('password');fireEvent.click(screen.getByRole('button',{name:'Toggle password'}));expect(password.getAttribute('type')).toBe('text')})});
 
