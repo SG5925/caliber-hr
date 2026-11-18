@@ -1,8 +1,8 @@
+import {hrSessionEndpoint} from './hr-paths';
 export type HrProfile={name:string;login:string;role:string;assignedRole:string;permissions:{application:string;adminLevel?:string;site?:string;hrDesktopAccess?:string[];hrMobileAccess?:string[]}};
 export type HrSession={grant:string;profile:HrProfile};
-const endpoint='https://pulse.cmll.in/api/integrations/hr/';
 async function request(action:string,body:unknown){
- const response=await fetch(endpoint+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error'});
+ const response=await fetch(hrSessionEndpoint+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error'});
  const data=await response.json();
  if(!response.ok)throw new Error(data.error||'Pulse sign-in is unavailable. Please retry.');
  return data;

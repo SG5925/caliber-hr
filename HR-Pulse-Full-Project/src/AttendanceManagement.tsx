@@ -1,3 +1,4 @@
+import {hrAsset,inPulseII} from './hr-paths';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Download,RefreshCw} from 'lucide-react';
 import {api,csv,download,type Lookup} from './api';
@@ -47,7 +48,7 @@ export default function AttendanceManagement({grant}:{grant:string}){
  useEffect(()=>{live.current=true;return()=>{live.current=false;};},[]);
  useEffect(()=>{
   const openMis=(event:MessageEvent)=>{
-   if(event.origin===window.location.origin&&event.source===attendanceFrame.current?.contentWindow&&event.data==='open-hr-mis-attendance')setTab('mis');
+   if(event.origin===(inPulseII?'null':window.location.origin)&&event.source===attendanceFrame.current?.contentWindow&&event.data==='open-hr-mis-attendance')setTab('mis');
   };
   window.addEventListener('message',openMis);
   return()=>window.removeEventListener('message',openMis);
@@ -121,7 +122,7 @@ export default function AttendanceManagement({grant}:{grant:string}){
    <button className={tab==='punches'?'selected':''} aria-pressed={tab==='punches'} onClick={()=>setTab('punches')}>Machine punches</button>
    <button className={tab==='mis'?'selected':''} aria-pressed={tab==='mis'} onClick={()=>setTab('mis')}>Trip Cards &amp; Logbook</button>
   </div>
-  {tab==='module'&&<iframe ref={attendanceFrame} src="/attendance-module.html" title="Attendance Management module"/>}
+  {tab==='module'&&<iframe ref={attendanceFrame} src={hrAsset("attendance-module.html")} sandbox={inPulseII ? "allow-scripts allow-downloads" : undefined} title="Attendance Management module"/>}
   {tab==='mis'&&<MisAttendance grant={grant}/>}
   {tab==='punches'&&<>
 

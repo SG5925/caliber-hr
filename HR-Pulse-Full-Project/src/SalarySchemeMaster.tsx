@@ -1,3 +1,4 @@
+import {hrAsset} from './hr-paths';
 import {siteDisplayName} from './siteNames';
 import {useState} from 'react';
 import {Eye,IndianRupee,Lock,X} from 'lucide-react';
@@ -37,7 +38,7 @@ export default function SalarySchemeMaster({actor='',canApprove=false}:{actor?:s
    <div>
     <div className="shift-card salary-order"><div className="salary-order-head"><h2>Wage rate order (source)</h2><button type="button" className="shift-add salary-save" onClick={()=>setOrderOpen(true)}><Eye/>View</button></div>
      <p className="shift-footnote">Coal India Limited office order ref. CIL/C-5B/JBCCI/JC/VDA/47 dated 12.10.2026 – contractors' workers wage rates incl. VDA, effective 01.10.2026 to 31.03.2027: Unskilled ₹1,341 · Semi-Skilled ₹1,375 · Skilled ₹1,409 · Highly Skilled ₹1,443.</p>
-     {orderOpen&&<div className="salary-ov" onClick={()=>setOrderOpen(false)}><div className="salary-md salary-gr-md" role="dialog" aria-label="Wage rate order" onClick={e=>e.stopPropagation()}><div className="salary-mh"><h4>Wage rate order – CIL, 12.10.2026</h4><button type="button" className="salary-x" aria-label="Close" onClick={()=>setOrderOpen(false)}><X/></button></div><img src="/hpc-wage-rate-order.jpg" alt="Coal India Limited office order dated 12.10.2026 revising contractors' workers wage rates with VDA, effective 01.10.2026 to 31.03.2027"/></div></div>}</div>
+     {orderOpen&&<div className="salary-ov" onClick={()=>setOrderOpen(false)}><div className="salary-md salary-gr-md" role="dialog" aria-label="Wage rate order" onClick={e=>e.stopPropagation()}><div className="salary-mh"><h4>Wage rate order – CIL, 12.10.2026</h4><button type="button" className="salary-x" aria-label="Close" onClick={()=>setOrderOpen(false)}><X/></button></div><img src={hrAsset("hpc-wage-rate-order.jpg")} alt="Coal India Limited office order dated 12.10.2026 revising contractors' workers wage rates with VDA, effective 01.10.2026 to 31.03.2027"/></div></div>}</div>
    </div>
   </div>
   <div className="shift-grid" style={{marginTop:20}}>

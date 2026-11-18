@@ -1,5 +1,6 @@
+import {hrApiOrigin,hrSessionEndpoint} from './hr-paths';
 import {displaySiteRecords} from './siteNames';
-export const API='https://hr-api-cmll-783.azurewebsites.net';
+export const API=hrApiOrigin;
 export type Profile={name:string;username?:string;email?:string;actor?:string;assignedRole?:string;permissions:{application:string;hrDesktopAccess?:string[];hrMobileAccess?:string[];site?:unknown;adminLevel?:unknown}};
 export type Session={grant:string;profile:Profile};
 export type Field={key:string;label:string;type:string;required?:boolean;reference?:string;options?:string[];min?:number};
@@ -8,7 +9,7 @@ export type HRConfig={profile:Profile;modules:Record<string,Module>};
 export type RecordRow={id:string;kind:string;code:string;name:string;data:Record<string,string|number>;status:string;version:number;updated_at:string};
 export type Lookup={department_id?:string;id:string;kind:string;code:string;name:string};
 export async function pulse(action:string,data:object){
-  const response=await fetch('https://pulse.cmll.in/api/integrations/hr/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),redirect:'error',signal:AbortSignal.timeout(15000)});
+  const response=await fetch(hrSessionEndpoint+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),redirect:'error',signal:AbortSignal.timeout(15000)});
   const result=await response.json();if(!response.ok)throw new Error(result.error||'Unable to sign in');return result;
 }
 export function clearSession(){localStorage.removeItem('hrPulseSession');sessionStorage.removeItem('hrPulseSession');}

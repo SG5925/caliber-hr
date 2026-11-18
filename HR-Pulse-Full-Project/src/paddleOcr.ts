@@ -1,3 +1,4 @@
+import {hrAsset} from './hr-paths';
 import type {PaddleOCR} from '@paddleocr/paddleocr-js';
 let engine:Promise<Awaited<ReturnType<typeof PaddleOCR.create>>>|undefined;
 let queue=Promise.resolve();
@@ -5,7 +6,7 @@ let runtime:Promise<ArrayBuffer[]>|undefined;
 function getRuntime(){
  if(!runtime)runtime=Promise.all(['ort-wasm-simd-threaded.jsep.mjs','ort-wasm-simd-threaded.jsep.wasm'].map(async file=>{
   try{
-   const response=await fetch(new URL('/ocr/runtime/'+file,location.origin),{signal:AbortSignal.timeout(300000)});
+   const response=await fetch(new URL(hrAsset('ocr/runtime/'+file),location.origin),{signal:AbortSignal.timeout(300000)});
    if(!response.ok)throw new Error('HTTP download failure');
    return await response.arrayBuffer();
   }catch{throw new Error('OCR runtime download failed or timed out');}
@@ -23,16 +24,16 @@ async function getEngine(){
   getRuntime(),
  ]).then(([{PaddleOCR},[,wasm]])=>PaddleOCR.create({
   worker:{createWorker:()=>{
-   const worker=new Worker(new URL('/ocr/paddle-worker.mjs?v=20261028-2',location.origin),{type:'module'});
+   const worker=new Worker(new URL(hrAsset('ocr/paddle-worker.mjs?v=20261028-2'),location.origin),{type:'module'});
    const copy=wasm.slice(0);
    worker.postMessage({kind:'ocr-runtime',wasm:copy},[copy]);
    return worker;
   }},
   textDetectionModelName:'PP-OCRv5_mobile_det',
   textRecognitionModelName:'en_PP-OCRv5_mobile_rec',
-  textDetectionModelAsset:{url:new URL('/ocr/PP-OCRv5_mobile_det.tar',location.origin).href},
-  textRecognitionModelAsset:{url:new URL('/ocr/en_PP-OCRv5_mobile_rec.tar',location.origin).href},
-  ortOptions:{backend:'wasm',numThreads:1,wasmPaths:new URL('/ocr/runtime/',location.origin).href},
+  textDetectionModelAsset:{url:new URL(hrAsset('ocr/PP-OCRv5_mobile_det.tar'),location.origin).href},
+  textRecognitionModelAsset:{url:new URL(hrAsset('ocr/en_PP-OCRv5_mobile_rec.tar'),location.origin).href},
+  ortOptions:{backend:'wasm',numThreads:1,wasmPaths:new URL(hrAsset('ocr/runtime/'),location.origin).href},
  })).catch(error=>{engine=undefined;throw error;});
  return engine;
 }
