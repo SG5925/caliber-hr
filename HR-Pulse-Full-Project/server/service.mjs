@@ -1,3 +1,4 @@
+import {managementModules} from './management-modules.mjs';
 import {createTelegram,telegramLeaveFlow,odSiteFlow,telegramSteps,queueTelegram,leaveMessage,employeeActor} from './telegram.mjs';
 import {odApprovalWorkflow} from './out-duty.mjs';
 import {createTransferFlows,transferWorkflow,applyTransfer} from './employee-transfer-flow.mjs';
@@ -46,7 +47,7 @@ export function createService(pool,{telegram=createTelegramNotifier()}={}) {
     if(kind==='holidays'&&site&&!ids.includes(site))site=(await db.query("SELECT id FROM hr_records WHERE kind='sites' AND (code=$1 OR name=$1)",[site])).rows.find(r=>ids.includes(r.id))?.id;
     if(kind==='sites')site=id;
     if(['assetEmployees','assetAllocationLog','assetExitClearances','employeeTransfers','outDutyRequests'].includes(kind)||employeeLeaveKinds.includes(kind))site=(await db.query("SELECT data->>'siteId' AS site FROM hr_records WHERE id=$1 AND kind='employees'",[data.employeeId])).rows[0]?.site;
-    if(!['calendarEvents','assetEmployees','assetAllocationLog','assetExitClearances','assets','employees','sites','shifts','holidays','leaveBlocks','leaveRequests','leaveAllocations','leaveEncashments','employeeTransfers','outDutyRequests'].includes(kind))throw problem('Global master changes require an account without a site restriction',403);
+    if(!Object.hasOwn(managementModules,kind)&&!['calendarEvents','assetEmployees','assetAllocationLog','assetExitClearances','assets','employees','sites','shifts','holidays','leaveBlocks','leaveRequests','leaveAllocations','leaveEncashments','employeeTransfers','outDutyRequests'].includes(kind))throw problem('Global master changes require an account without a site restriction',403);
     if(!ids.includes(site))throw problem('This record is outside your assigned Pulse site',403);
   }
   async function references(db,kind,data,id) {
@@ -57,6 +58,7 @@ export function createService(pool,{telegram=createTelegramNotifier()}={}) {
       if (data[field.key]===id) throw problem('A record cannot refer to itself');
       const found=await db.query("SELECT * FROM hr_records WHERE id=$1 AND kind=$2 AND status IN ('ACTIVE','APPROVED')"+(kind==='leaveRequests'&&field.key==='employeeId'?' FOR UPDATE':field.reference==='leavePeriods'?' FOR SHARE':''),[data[field.key],field.reference]);
       if (!found.rowCount) throw problem(`${field.label} is not active`);
+      if(Object.hasOwn(managementModules,kind) && field.reference!=='sites' && found.rows[0].data.siteId!==data.siteId)throw problem(field.label+' must belong to the selected site');
       linked[field.key]=found.rows[0];
     }
     for(const key of ['siteId','departmentId']) if(linked[key]?.data.companyId && data.companyId && linked[key].data.companyId!==data.companyId) throw problem('Site and department must belong to the selected company');
@@ -157,7 +159,7 @@ export function createService(pool,{telegram=createTelegramNotifier()}={}) {
     ...createTransferFlows(pool),
     ...createHolidayDocuments(pool),
     ...createEmployeeMasterRegister(pool),
-    async config(profile) { const scoped=assignedSites(profile)!==null;return {profile,modules:Object.fromEntries(Object.entries(modules).filter(([kind])=>canRead(profile,kind)).map(([kind,config])=>[kind,{...config,canWrite:canWrite(profile,kind)&&(!scoped||['employees','sites','shifts','holidays','leaveBlocks','leaveRequests','leaveAllocations','leaveEncashments','outDutyRequests'].includes(kind))}]))}; },
+    async config(profile) { const scoped=assignedSites(profile)!==null;return {profile,modules:Object.fromEntries(Object.entries(modules).filter(([kind])=>canRead(profile,kind)).map(([kind,config])=>[kind,{...config,canWrite:canWrite(profile,kind)&&(!scoped||Object.hasOwn(managementModules,kind)||['employees','sites','shifts','holidays','leaveBlocks','leaveRequests','leaveAllocations','leaveEncashments','outDutyRequests'].includes(kind))}]))}; },
     async list(profile,kind,params) {
       authorize(profile,kind);
       const page=Math.max(1,Math.min(10000,Number(params.get('page'))||1));
