@@ -89,12 +89,12 @@ export default function AadhaarUploader({
     <p>Upload up to two Aadhaar images in JPG, JPEG, PNG, or PDF format.{showScanInstructions &&
       ' Images and PDFs are sent to Google Gemini to read the details. Use an unlocked PDF up to 1.3 MB. Verify the extracted fields before saving.'}</p>
     <div className="aadhaar-upload-actions">
-      <button disabled={locked} type="button" className="employee-import" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}><Upload/>Upload Aadhaar Image 1</button>
+      <button disabled={locked} type="button" className="employee-import" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}><Upload/>Upload Aadhar Front Image</button>
       {menuOpen && <div className="aadhaar-source-menu">
         <button disabled={locked} type="button" onClick={() => camera.current?.click()}><Camera/>Camera</button>
         <button disabled={locked} type="button" onClick={() => gallery.current?.click()}><Images/>Gallery / Document</button>
       </div>}
-      <button disabled={locked} type="button" className="employee-import" onClick={() => second.current?.click()}><Upload/>Upload Aadhaar Image 2</button>
+      <button disabled={locked} type="button" className="employee-import" onClick={() => second.current?.click()}><Upload/>Upload Aadhar Back Image</button>
       <input disabled={locked} ref={camera} className="employee-import-input" aria-label="Capture Aadhaar card" type="file" accept={imageTypes} capture="environment" onChange={event => void select(event, 1)}/>
       <input disabled={locked} ref={gallery} className="employee-import-input" aria-label="Choose Aadhaar card from gallery" type="file" accept={documentTypes} onChange={event => void select(event, 1)}/>
       <input disabled={locked} ref={second} className="employee-import-input" aria-label="Choose second Aadhaar image" type="file" accept={documentTypes} onChange={event => void select(event, 2)}/>

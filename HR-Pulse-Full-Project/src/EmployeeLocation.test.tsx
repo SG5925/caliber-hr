@@ -301,10 +301,10 @@ describe('Employee Master tabs',()=>{
   expect(screen.getByLabelText(/^Full Name \*/)).toBeTruthy();
   expect(screen.getByLabelText(/Employee Code/)).toBeTruthy();
   expect(screen.getByLabelText('Employee group')).toBeTruthy();
-  expect(screen.getByRole('button',{name:'Upload Aadhaar Image 1'})).toBeTruthy();
-  expect(screen.getByRole('button',{name:'Upload Aadhaar Image 2'})).toBeTruthy();
+  expect(screen.getByRole('button',{name:'Upload Aadhar Front Image'})).toBeTruthy();
+  expect(screen.getByRole('button',{name:'Upload Aadhar Back Image'})).toBeTruthy();
   expect(screen.getByLabelText('Choose second Aadhaar image')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button',{name:'Upload Aadhaar Image 1'}));
+  fireEvent.click(screen.getByRole('button',{name:'Upload Aadhar Front Image'}));
   expect(screen.getByRole('button',{name:'Camera'})).toBeTruthy();
   expect(screen.getByRole('button',{name:'Gallery / Document'})).toBeTruthy();
   const aadhaarInput=screen.getByLabelText('Choose Aadhaar card from gallery');

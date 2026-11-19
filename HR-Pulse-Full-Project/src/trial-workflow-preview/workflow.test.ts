@@ -50,7 +50,7 @@ describe('Trial workflow preview',()=>{
     input('#f_name','Verified Name');
     click('[data-tab="aadhaar"]');
     const file = new File(['%PDF-1.7'],'sample-aadhaar.pdf',{type:'application/pdf'});
-    fireEvent.click(getByRole('button',{name:'Upload Aadhaar Image 1'}));
+    fireEvent.click(getByRole('button',{name:'Upload Aadhar Front Image'}));
     expect(getByRole('button',{name:'Camera'})).toBeEnabled();
     expect(getByRole('button',{name:'Gallery / Document'})).toBeEnabled();
     fireEvent.change(getByLabelText('Choose Aadhaar card from gallery'),{target:{files:[file]}});
@@ -85,7 +85,7 @@ describe('Trial workflow preview',()=>{
     expect(el('#sSubmit')).toBeEnabled();
     click('#sReset');
     expect(getByLabelText('Choose second Aadhaar image')).toBeEnabled();
-    expect(getByRole('button',{name:'Upload Aadhaar Image 1'})).toBeEnabled();
+    expect(getByRole('button',{name:'Upload Aadhar Front Image'})).toBeEnabled();
     change('#role','trainer');
     expect(getByLabelText('Choose second Aadhaar image')).toBeDisabled();
   });
