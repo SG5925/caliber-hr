@@ -180,3 +180,4 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #tgText{width:100%;min-height:170px;padding:6px;margin:8px 0;resize:vertical}
 /* Fields filled from the Aadhaar scan are locked */
 .row input[data-aadhaar-locked]{background:#f3f4f6;color:#374151;border-bottom-style:solid;cursor:not-allowed}
+.row input[data-driving-licence-locked]{background:#d1d5db;color:#1f2937;border-bottom-style:solid;cursor:not-allowed}
