@@ -67,7 +67,7 @@ describe('Trial workflow preview',()=>{
     }));
     const licenceImage=new File(['image-bytes'],'front.jpg',{type:'image/jpeg'});
     fireEvent.change(getByLabelText('Choose front driving licence image'),{target:{files:[licenceImage]}});
-    await waitFor(()=>expect(document.querySelector('img[alt="Uploaded front driving licence preview"]')).toHaveAttribute('src',expect.stringMatching(/^data:image\/jpeg;base64,/)));
+    await waitFor(()=>expect(document.querySelector('img[alt="Uploaded front driving licence preview"]')).toHaveAttribute('src',expect.stringMatching(/^blob:/)));
     expect(el('#aadhaarContinue')).toBeDisabled();
     fireEvent.change(getByLabelText('Choose front driving licence image'),{target:{files:[file]}});
     fireEvent.change(getByLabelText('Choose back driving licence image'),{target:{files:[file]}});

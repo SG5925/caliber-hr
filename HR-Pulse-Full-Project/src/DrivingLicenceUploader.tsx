@@ -4,7 +4,7 @@ import {savedSession} from './api';
 import {readGeminiDrivingLicence,type DrivingLicenceDetails} from './geminiOcr';
 
 const accept='.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf';
-function usePreview(file?:File){const[url,setUrl]=useState('');useEffect(()=>{if(!file){setUrl('');return;}if(file.type==='application/pdf'||/\.pdf$/i.test(file.name)){const next=URL.createObjectURL(file);setUrl(next);return()=>URL.revokeObjectURL(next);}let active=true;const reader=new FileReader();reader.onload=()=>{if(active)setUrl(String(reader.result||''));};reader.onerror=()=>{if(active)setUrl('');};reader.readAsDataURL(file);return()=>{active=false;reader.abort();};},[file]);return url;}
+function usePreview(file?:File){const[url,setUrl]=useState('');useEffect(()=>{if(!file){setUrl('');return;}const next=URL.createObjectURL(file);setUrl(next);return()=>URL.revokeObjectURL(next);},[file]);return url;}
 export default function DrivingLicenceUploader({disabled,onBusy,onReady,onDetails}:{disabled?:boolean;onBusy:(busy:boolean)=>void;onReady:(ready:boolean)=>void;onDetails:(details:DrivingLicenceDetails)=>void}){
  const[front,setFront]=useState<File>();const[back,setBack]=useState<File>();const[status,setStatus]=useState('');const[busy,setBusy]=useState(false);
  const frontPreview=usePreview(front),backPreview=usePreview(back);
