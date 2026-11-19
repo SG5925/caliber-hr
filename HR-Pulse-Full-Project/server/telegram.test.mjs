@@ -26,7 +26,13 @@ test('shared review queue is site-scoped and omits uploaded file payloads',async
  assert.equal(out.rows[0].id,'trial-id');assert.ok(!JSON.stringify(out).includes('private-file'));
  await assert.rejects(service.telegramApi({...profile,permissions:{}},'trial-review-queue','POST',{}),{status:403});
 });
-import {createTelegram,validateTelegramHierarchy,telegramSteps,webhookSecretValid,queueTelegram,deliverTelegram,leaveMessage,trialTrainerFor,requireTrialUploads} from './telegram.mjs';
+import {createTelegram,validateTelegramHierarchy,telegramSteps,webhookSecretValid,queueTelegram,deliverTelegram,leaveMessage,trialTrainerFor,requireTrialUploads,keepTrialDocuments} from './telegram.mjs';
+test('trial identity documents survive result and approval attachment updates',()=>{
+ const old=[{name:'aadhaar.jpg',mime:'image/jpeg',kind:'aadhaar',data:'YWFk'} ,{name:'licence.jpg',mime:'image/jpeg',kind:'drivingLicence',data:'ZGk='}];
+ const next=[{name:'result.pdf',mime:'application/pdf',kind:'trialResult',data:'cGRm'}];
+ const merged=keepTrialDocuments(old,next);
+ assert.deepEqual(merged.map(file=>file.kind),['trialResult','aadhaar','drivingLicence']);
+});
 test('leave templates distinguish intermediate approval and include verified decision details',()=>{
  const record={code:'LR-1024',name:'Test Employee',data:{fromDate:'2026-10-29',toDate:'2026-10-30',chargeHandedOverTo:'Colleague'}};
  const details={siteName:'Nagpur CO',actor:'hr',name:'HR Manager',telegramId:'123456',at:'2026-10-29T10:00:00Z',comments:'Dates unavailable'};

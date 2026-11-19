@@ -31,6 +31,7 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
     const mounted = mountTrialPreview(node.shadowRoot||node.attachShadow({mode:'open'}),{owner,legacyOwner,name:signerName,site,region,group,company,department,designation},{
       reset: () => {setUploadVersion(version => version + 1);setAadhaarFile(undefined);setLicenceFront(undefined);setLicenceBack(undefined);},
       setDisabled,
+      documents:()=>checklistDocuments.current,
     },onCleared?async rows=>cleared.current?.(rows,checklistDocuments.current):undefined);
     setDisabled(false);
     setWorkflow(mounted);

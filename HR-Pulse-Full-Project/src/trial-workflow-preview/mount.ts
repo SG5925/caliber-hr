@@ -12,6 +12,7 @@ import {siteDisplayName} from '../siteNames';
 import {findPreviousTrial} from './previousTrial';
 import type {TrialMatch} from '../TrialAadhaarHistory';
 import {optimizeDrivingVideo} from './optimizeDrivingVideo';
+import type {TrialChecklistDocuments} from '../trialHandoff';
 
 type Tab = 'aadhaar' | 'hr' | 'trainer' | 'approve' | 'overview';
 type Scope = TrialScope & {owner: string; legacyOwner?: string; name: string;designation?:string};
@@ -30,6 +31,7 @@ export const sameDocumentBirthDate=(aadhaarDob:string,licenceDob:string)=>Boolea
 export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   reset: () => void;
   setDisabled: (disabled: boolean) => void;
+  documents?: () => TrialChecklistDocuments;
 }, onCleared?: PrepareJoining) {
   const style = document.createElement('style');
   style.textContent = css;
@@ -222,7 +224,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
       return [...latest,...created];
     })) return false;
     toast(batch ? `Batch ${created[0].batch}: ${created.length} candidates sent to Driver Trainer.` : `${created[0].formNo} sent to Driver Trainer.`);
-    if (savedSession()?.grant) void sendPart1(created,scope)
+    if (savedSession()?.grant) void sendPart1(created,scope,aadhaar.documents?.())
       .then(d=>{if(!effects.signal.aborted) showTelegram([d.message],batch?`Batch ${created[0].batch} – sent to driver trainer (PDF sheet attached)`:'Trial Form Submitted – sent to driver trainer',undefined,deliveryStatus(d));})
       .catch(error=>{if(!effects.signal.aborted) toast('Telegram: '+(error instanceof Error?error.message:'could not send'));});
     return true;

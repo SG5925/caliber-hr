@@ -6,12 +6,13 @@ import {api, savedSession} from '../api';
 import {utils as xlsxUtils, write as xlsxWrite} from 'xlsx';
 import {equipment, type Trial} from './records';
 import {reviewTrial,type ReviewRecord} from './reviewQueue';
+import type {TrialChecklistDocuments} from '../trialHandoff';
 
 export type Delivery = {message: string; recipients: number; connected: string[]; bot?: string; configured?: boolean; issues?: string[]};
 export type TrialScope = {company: string; site: string; region: string; group: string; department: string};
 export type TrialTrainer = {actor:string;name:string;site:string;reason?:string;roles?:string[]};
 const target = ({site, region, group, company}: TrialScope) => ({site, region, group, company});
-type Attachment = {name: string; mime: string; data: string; kind?:'photo'|'trialResult'|'drivingVideo'};
+type Attachment = {name: string; mime: string; data: string; kind?:'photo'|'trialResult'|'drivingVideo'|'aadhaar'|'drivingLicence'};
 const dlClassDetails = (row: Trial) => (row.dlClasses||[]).map(item=>[
   `Class / Code: ${item.code||'–'}`,`Issued by: ${item.issuedBy||'–'}`,`Date of issue: ${item.dateOfIssue||'–'}`,
   `Vehicle category: ${item.vehicleCategory||'–'}`,`Badge number: ${item.badgeNumber||'–'}`,
@@ -57,11 +58,12 @@ export function deliveryStatus(d: Delivery, names: (key: string) => string = key
   return d.issues?.length ? base+' '+d.issues.join(' · ') : base;
 }
 
-export async function sendPart1(created: Trial[], scope: TrialScope): Promise<Delivery> {
+export async function sendPart1(created: Trial[], scope: TrialScope, documents:TrialChecklistDocuments={}): Promise<Delivery> {
   const grant = grantOrThrow();
+  const documentAttachments=await Promise.all([fileAttachment(documents.aadhaar,'aadhaar'),fileAttachment(documents.drivingLicence,'drivingLicence')]);
   const out = await api<{batchId: string; telegram: Delivery}>(grant, 'telegram/trial-part1', 'POST', {
     heading: scope.site, ...target(scope), department: scope.department, trialBy: 'driver trainer', batchId: created[0]?.batch || '',
-    candidates: created.map(row => ({formNo: row.formNo, fields: fields(row), attachments: [dataUrl('photo', row.photo,'photo')].filter(Boolean)})),
+    candidates: created.map(row => ({formNo: row.formNo, fields: fields(row), attachments: [dataUrl('photo', row.photo,'photo'),...documentAttachments].filter(Boolean)})),
   });
   return out.telegram;
 }

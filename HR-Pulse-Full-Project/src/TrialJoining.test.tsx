@@ -34,9 +34,14 @@ it('opens a completed operator trial at step two and saves it on the sixth step 
  vi.spyOn(drafts,'removeJoiningDraft').mockImplementation(async key=>{saved.delete(key);});
  vi.spyOn(drafts,'saveEmployeeDocuments').mockResolvedValue(undefined);
  const aadhaarFile=new File(['aadhaar'],'trial-aadhaar.jpg',{type:'image/jpeg'}),licenceFile=new File(['licence'],'trial-licence.jpg',{type:'image/jpeg'});
+ sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43),profile:{name:'Site HR',permissions:{application:'HR'}}}));
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({data:{attachments:[
+  {name:aadhaarFile.name,mime:aadhaarFile.type,kind:'aadhaar',data:'YWFkaGFhcg=='},
+  {name:licenceFile.name,mime:licenceFile.type,kind:'drivingLicence',data:'bGljZW5jZQ=='},
+ ]}})));
  const preparedDraft=await prepareTrialJoining([{...row,id:'failed',result:'FAIL'},row],{
   employeeGroup:'OB / COAL',company:'Caliber Mining And Logistics Ltd',region:'NCL',site:'Jayant OB East',department:'Driver',subdepartment:'Heavy Vehicles',designation:'Tipper Driver',
- },'site-hr',{aadhaar:aadhaarFile,drivingLicence:licenceFile});
+ },'site-hr');
  expect(saved.size).toBe(1);
  expect(preparedDraft?.step).toBe(1);
  saved.set(preparedDraft!.id,{...preparedDraft!,step:0});
@@ -57,8 +62,8 @@ it('opens a completed operator trial at step two and saves it on the sixth step 
  expect(screen.queryByRole('heading',{name:'Upload Aadhaar Card'})).toBeNull();
  await waitFor(()=>{
   expect((screen.getByLabelText('Upload Candidate photo') as HTMLInputElement).files?.[0]?.name).toBe('trial-candidate.jpg');
-  expect((screen.getByLabelText('Upload Aadhaar (masked display)') as HTMLInputElement).files?.[0]).toBe(aadhaarFile);
-  expect((screen.getByLabelText('Upload Driving licence') as HTMLInputElement).files?.[0]).toBe(licenceFile);
+  expect((screen.getByLabelText('Upload Aadhaar (masked display)') as HTMLInputElement).files?.[0]?.name).toBe(aadhaarFile.name);
+  expect((screen.getByLabelText('Upload Driving licence') as HTMLInputElement).files?.[0]?.name).toBe(licenceFile.name);
  });
  const form=container.querySelector<HTMLFormElement>('.joining-form')!;
  for(const control of form.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>('[required]')){
@@ -84,8 +89,8 @@ it('opens a completed operator trial at step two and saves it on the sixth step 
  }
  expect(screen.getByRole('heading',{name:'Document Checklist',level:2})).toBeInTheDocument();
  expect((screen.getByLabelText('Upload Candidate photo') as HTMLInputElement).files?.[0]?.name).toBe('trial-candidate.jpg');
- expect((screen.getByLabelText('Upload Aadhaar (masked display)') as HTMLInputElement).files?.[0]).toBe(aadhaarFile);
- expect((screen.getByLabelText('Upload Driving licence') as HTMLInputElement).files?.[0]).toBe(licenceFile);
+ expect((screen.getByLabelText('Upload Aadhaar (masked display)') as HTMLInputElement).files?.[0]?.name).toBe(aadhaarFile.name);
+ expect((screen.getByLabelText('Upload Driving licence') as HTMLInputElement).files?.[0]?.name).toBe(licenceFile.name);
  await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Save Employee'}));});
  await waitFor(()=>{
   expect(screen.queryByRole('alert')?.textContent).toBeUndefined();
