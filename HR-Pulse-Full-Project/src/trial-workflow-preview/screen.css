@@ -8,7 +8,8 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 :host{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.45}
-.wrap{max-width:1180px;margin:0 auto;padding-block:16px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+.wrap{width:100%;max-width:none;margin:0;padding-block:16px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+@media print{.wrap{width:100%;max-width:none;margin:0;padding:0}}
 h1,h2,h3{margin:0;text-wrap:balance}
 button,input,select,textarea{font:inherit;color:inherit}
 input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
