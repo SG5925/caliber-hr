@@ -12,7 +12,7 @@ import './attendance.css';
    own tab; "Machine punches" shows what the machines actually recorded. */
 export type Punch={id:string;deviceSerial:string;deviceName:string;siteName:string;biometricId:string;date:string;time:string;verify:string;punchType:string;employeeId:string;employeeCode:string;employeeName:string;machineName:string};
 export type FetchRequest={id:string;state:'PENDING'|'RUNNING'|'DONE'|'FAILED';punchesReceived:number;newPunches:number;error:string;requestedAt:string;completedAt:string|null};
-type Device={serial:string;name:string;siteId:string|null;siteName:string;lastSeen:string|null};
+type Device={online:boolean;lastContact:string|null;serial:string;name:string;siteId:string|null;siteName:string;lastSeen:string|null};
 type Status={configured:boolean;bridgeOnline:boolean;bridgeLastSeen:string|null;devices:Device[];lastFetch:FetchRequest|null;canLink:boolean;canManageDevices:boolean};
 type Unlinked={deviceSerial:string;biometricId:string;punches:number;lastPunch:string;machineName:string;siteName:string};
 type PunchList={from:string;to:string;truncated:boolean;rows:Punch[]};
@@ -42,7 +42,9 @@ export default function AttendanceManagement({grant}:{grant:string}){
  const [lookups,setLookups]=useState<Lookup[]>([]),[choice,setChoice]=useState<Record<string,string>>({});
  const [loading,setLoading]=useState(true),[fetching,setFetching]=useState(false),[busy,setBusy]=useState(false);
  const [error,setError]=useState(''),[message,setMessage]=useState('');
- const [tab,setTab]=useState<'module'|'punches'|'mis'>('module');
+ const [tab,setTab]=useState<'module'|'punches'|'mis'|'machines'>('module');
+ const [selected,setSelected]=useState('');
+ const [site,setSite]=useState('');
  const live=useRef(true);
  const attendanceFrame=useRef<HTMLIFrameElement>(null);
  useEffect(()=>{live.current=true;return()=>{live.current=false;};},[]);
@@ -54,12 +56,12 @@ export default function AttendanceManagement({grant}:{grant:string}){
   return()=>window.removeEventListener('message',openMis);
  },[]);
 
- const load=useCallback(async(showPunches:boolean)=>{
+ const load=useCallback(async(showPunches:boolean,serial=selected)=>{
   setLoading(true);setError('');
   try{
    const [nextStatus,nextPunches,nextUnlinked]=await Promise.all([
     api<Status>(grant,'attendance/status'),
-    showPunches?api<PunchList>(grant,`attendance/punches?from=${from}&to=${to}`):null,
+    showPunches?api<PunchList>(grant,`attendance/punches?from=${from}&to=${to}&deviceSerial=${encodeURIComponent(serial)}`):null,
     showPunches?api<Unlinked[]>(grant,'attendance/unlinked'):null,
    ]);
    if(!live.current)return;
@@ -68,20 +70,27 @@ export default function AttendanceManagement({grant}:{grant:string}){
    if(nextUnlinked)setUnlinked(Array.isArray(nextUnlinked)?nextUnlinked:[]);
   }catch(e){if(live.current)setError((e as Error).message);}
   finally{if(live.current)setLoading(false);}
- },[grant,from,to]);
+ },[grant,from,to,selected]);
  useEffect(()=>{void load(tab==='punches');},[load,tab]);
- useEffect(()=>{if(!status?.canLink||tab!=='punches')return;let active=true;api<Lookup[]>(grant,'lookups').then(rows=>{if(active&&Array.isArray(rows))setLookups(rows);}).catch(()=>{});return()=>{active=false;};},[grant,status?.canLink,tab]);
+ useEffect(()=>{if(!status?.canLink||(tab!=='punches'&&tab!=='machines'))return;let active=true;api<Lookup[]>(grant,'lookups').then(rows=>{if(active&&Array.isArray(rows))setLookups(rows);}).catch(()=>{});return()=>{active=false;};},[grant,status?.canLink,tab]);
 
- async function fetchAttendance(){
+ useEffect(()=>{
+  if(tab!=='machines')return;
+  let active=true;
+  const timer=setInterval(()=>{api<Status>(grant,'attendance/status').then(s=>{if(active)setStatus(s);}).catch(()=>{});},15000);
+  return()=>{active=false;clearInterval(timer);};
+ },[grant,tab]);
+ async function fetchAttendance(serial=''){
+  setSelected(serial);
   setFetching(true);setError('');setMessage('Asking the bridge PC to fetch attendance from the machine…');
   try{
-   let request=await api<FetchRequest>(grant,'attendance/fetch','POST',{});
+   let request=await api<FetchRequest>(grant,'attendance/fetch','POST',{deviceSerial:serial});
    for(let i=0;i<MAX_POLLS&&live.current&&(request.state==='PENDING'||request.state==='RUNNING');i++){
     await wait(POLL_MS);
     request=await api<FetchRequest>(grant,'attendance/fetch/'+request.id);
    }
    if(!live.current)return;
-   if(request.state==='DONE'){setMessage(fetchMessage(request));if(tab==='punches')await load(true);else setTab('punches');}
+   if(request.state==='DONE'){setMessage((serial?serial+' · ':'')+fetchMessage(request));if(tab==='punches')await load(true,serial);else setTab('punches');}
    else{setMessage('');setError(request.state==='FAILED'?fetchMessage(request):'The fetch is taking longer than expected. Refresh in a minute.');}
   }catch(e){if(live.current){setMessage('');setError((e as Error).message);}}
   finally{if(live.current)setFetching(false);}
@@ -121,6 +130,7 @@ export default function AttendanceManagement({grant}:{grant:string}){
    <button className={tab==='module'?'selected':''} aria-pressed={tab==='module'} onClick={()=>setTab('module')}>Attendance module</button>
    <button className={tab==='punches'?'selected':''} aria-pressed={tab==='punches'} onClick={()=>setTab('punches')}>Machine punches</button>
    <button className={tab==='mis'?'selected':''} aria-pressed={tab==='mis'} onClick={()=>setTab('mis')}>Trip Cards &amp; Logbook</button>
+   <button className={tab==='machines'?'selected':''} aria-pressed={tab==='machines'} onClick={()=>setTab('machines')}>Biometric machines</button>
   </div>
   {tab==='module'&&<iframe ref={attendanceFrame} src={hrAsset("attendance-module.html")} sandbox={inPulseII ? "allow-scripts allow-downloads" : undefined} title="Attendance Management module"/>}
   {tab==='mis'&&<MisAttendance grant={grant}/>}
@@ -128,6 +138,7 @@ export default function AttendanceManagement({grant}:{grant:string}){
 
   <div className="data-card">
    <div className="attendance-filters">
+    <label>Machine<select disabled={fetching} value={selected} onChange={e=>setSelected(e.target.value)}><option value="">All machines</option>{status?.devices.map(d=><option key={d.serial} value={d.serial}>{d.serial}</option>)}</select></label>
     <label>From<input type="date" value={from} max={to} onChange={e=>e.target.value&&setFrom(e.target.value)}/></label>
     <label>To<input type="date" value={to} min={from} onChange={e=>e.target.value&&setTo(e.target.value)}/></label>
     <span>{loading?'Loading…':`${rows.length} punch${rows.length===1?'':'es'}`}</span>
@@ -159,18 +170,20 @@ export default function AttendanceManagement({grant}:{grant:string}){
    </table></div>
   </div>}
 
-  {status&&status.devices.length>0&&<div className="data-card">
-   <h2>Machines</h2>
+  </>}
+  {tab==='machines'&&status&&<div className="data-card">
+   <h2>Biometric machines</h2>
+   {status.canManageDevices&&<label>Site <select value={site} onChange={e=>setSite(e.target.value)}><option value="">Select a site</option>{sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}<option value="unassigned">Unassigned machines</option></select></label>}
    <div className="attendance-table"><table>
-    <thead><tr>{['Serial number','Site','Last upload'].map(x=><th key={x}>{x}</th>)}</tr></thead>
-    <tbody>{status.devices.map(d=><tr key={d.serial}>
+    <thead><tr>{['Serial number','Site','Status','Last contact','Action'].map(x=><th key={x}>{x}</th>)}</tr></thead>
+    <tbody>{status.devices.filter(d=>!status.canManageDevices||site===(d.siteId||'unassigned')).map(d=><tr key={d.serial}>
      <td>{d.serial}{d.name&&<small> · {d.name}</small>}</td>
      <td>{status.canManageDevices&&sites.length?<select aria-label={`Site for machine ${d.serial}`} value={d.siteId||''} disabled={busy} onChange={e=>void assignSite(d,e.target.value)}><option value="">Not assigned</option>{sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>:d.siteName||'Not assigned'}</td>
-     <td>{d.lastSeen?new Date(d.lastSeen).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',dateStyle:'medium',timeStyle:'short'}):'—'}</td>
+     <td>{d.online&&status.bridgeOnline?'Online':d.lastContact?'Offline':'Awaiting contact'}</td><td>{d.lastContact?new Date(d.lastContact).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',dateStyle:'medium',timeStyle:'short'}) :'—'}</td>
+     <td><button disabled={fetching||!status.configured||!status.bridgeOnline||!d.online} onClick={()=>void fetchAttendance(d.serial)}>Fetch log</button></td>
     </tr>)}</tbody>
    </table></div>
    {status.canManageDevices&&<p className="help-text">Assign each machine to its site so site HR users can see its punches.</p>}
   </div>}
-  </>}
  </section>;
 }
