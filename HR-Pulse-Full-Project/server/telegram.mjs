@@ -367,11 +367,20 @@ export function createTelegram(pool){
   if(route==='trial-trainer'&&method==='POST'){
    if(!grantedMenus(profile).has('Employee Master'))fail('Employee Master permission required',403);
    const target={site:String(input.site||'').slice(0,80),region:String(input.region||'').slice(0,80),company:String(input.company||'').slice(0,120),group:String(input.group||'').slice(0,80)};
-   const trainer=await trialTrainerFor(pool,target),actor=norm(profile.actor),roles=[];
+   const trainer=await trialTrainerFor(pool,target),actor=norm(profile.actor),roles=assignedSites(profile)===null?['hr','trainer','pm','ohr','rhr','director']:[];
    for(const [role,stage] of [['hr','siteHr'],['trainer','part1'],['pm','result'],['ohr','ohr'],['rhr','rhr'],['director','director']]){
     if((await hierarchyRecipients(pool,stage,target)).some(recipient=>recipient.actor===actor))roles.push(role);
    }
-   return {...trainer,roles};
+   return {...trainer,roles:[...new Set(roles)]};
+  }
+  if(route==='trial-scope'&&method==='GET'){
+   if(!grantedMenus(profile).has('Employee Master'))fail('Employee Master permission required',403);
+   const scope=assignedSites(profile),templates=hierarchyTemplates.filter(item=>['NCL','WCL'].includes(item.group));
+   if(scope===null)return {admin:true,sites:templates.map(item=>({region:item.group,site:item.name,code:item.code}))};
+   if(!scope.length)return {admin:false,sites:[]};
+   const rows=(await pool.query("SELECT id::text,code,name FROM hr_records WHERE kind='sites' AND status='ACTIVE' AND (id::text=ANY($1) OR lower(code)=ANY($1) OR lower(name)=ANY($1))",[scope])).rows;
+   const allowed=new Set([...scope,...rows.flatMap(row=>[norm(row.id),norm(row.code),norm(row.name)])]);
+   return {admin:false,sites:templates.filter(item=>allowed.has(norm(item.code))||allowed.has(norm(item.name))).map(item=>({region:item.group,site:item.name,code:item.code}))};
   }
   if(route==='trial-history'&&method==='POST'){
    if(!grantedMenus(profile).has('Employee Master'))fail('Employee Master permission required',403);

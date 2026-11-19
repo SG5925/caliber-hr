@@ -64,11 +64,13 @@ type TrialFormProps = {
  legacyOwner?: string;
 };
 export default function TrialForm({selection,onPassed,owner: draftOwner,legacyOwner}: TrialFormProps) {
- const profile = savedSession()?.profile;
+ const session=savedSession(),profile=session?.profile;
  const owner=draftOwner??(profile?.actor||profile?.username||profile?.email||'local');
  const [scope,setScope]=useState(selection);
+ const [resolvedSites,setResolvedSites]=useState<{region:string;site:string}[]|null|undefined>();
  useEffect(()=>setScope(selection),[selection]);
- const pulseSites=pulseTrialSites(profile?.permissions?.site,profile?.permissions?.adminLevel);
+ useEffect(()=>{if(!session?.grant)return;let active=true;void api<{admin:boolean;sites:{region:string;site:string}[]}>(session.grant,'telegram/trial-scope').then(result=>{if(active)setResolvedSites(result.admin?null:result.sites);}).catch(()=>{if(active)setResolvedSites(undefined);});return()=>{active=false;};},[session?.grant]);
+ const pulseSites=resolvedSites===undefined?pulseTrialSites(profile?.permissions?.site,profile?.permissions?.adminLevel):resolvedSites;
  const allowedRegions=pulseSites===null?trialRegions:[...new Set(pulseSites.map(item=>item.region))];
  const lockedSite=pulseSites?.length===1?pulseSites[0]:undefined;
  const region=lockedSite?.region||(allowedRegions.includes(scope.region)?scope.region:'');
