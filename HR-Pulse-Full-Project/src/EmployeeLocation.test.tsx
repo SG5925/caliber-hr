@@ -605,7 +605,8 @@ for(const group of ['Corporate / HO','OB / COAL'] as const)it(group+' requires f
  expect(screen.getByLabelText('Relationship 1')).toBeRequired();
  expect(screen.getByLabelText('Upload Family Aadhaar 1')).toBeRequired();
  expect(within(screen.getByLabelText('Relationship 1')).getAllByRole('option').map(o=>o.textContent)).toContain('Wife');
- expect(screen.getByText('Family Details are mandatory.')).toBeVisible();
+ expect(screen.getAllByRole('heading',{name:'Family Details*'})).toHaveLength(2);
+ expect(screen.queryByText('Family Details are mandatory.')).toBeNull();
  const upload=screen.getByLabelText('Upload Family Aadhaar 3');
  expect(upload).not.toBeRequired();
  fireEvent.change(screen.getByLabelText('Family Member Name 3'),{target:{value:'Parent Three'}});
