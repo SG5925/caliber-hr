@@ -250,7 +250,7 @@ function EmployeeDetailsEditor({row,sheets,initialSection,save,close}:{row:Recor
    try{await save(row,patch);dismiss();}catch(error){setError((error as Error).message);setSaving(false);}
   }}>
    <div className="record-form">{group.columns.filter(header=>header!=='Employee Code').map(header=><label key={header}>{header.replace(/\s*\*$/,'')}
-    <input value={changes[header]??String(corporateOfficeValue(row,header))} readOnly={header==='Site *'||header==='Bank Account No'&&Boolean(String(corporateOfficeValue(row,header)).trim())} disabled={saving} maxLength={4000} onChange={event=>setChanges(current=>({...current,[header]:event.target.value}))}/>
+    <input value={changes[header]??String(corporateOfficeValue(row,header))} readOnly={header==='Site *'||header==='Bank Account No'&&Boolean(String(corporateOfficeValue(row,header)).trim())} disabled={saving} inputMode={header==='New Account No'?'numeric':undefined} pattern={header==='New Account No'?'[0-9]{1,18}':undefined} maxLength={header==='New Account No'?18:4000} onChange={event=>setChanges(current=>({...current,[header]:event.target.value}))}/>
    </label>)}</div>
    {error&&<p className="error" role="alert">{error}</p>}
    <div className="form-actions"><button type="button" disabled={saving} onClick={dismiss}>Cancel</button><button className="primary" disabled={saving||!Object.keys(patch).length}>{saving?'Saving…':'Save changes'}</button></div>

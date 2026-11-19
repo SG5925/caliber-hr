@@ -52,3 +52,12 @@ test('saved bank account cannot be replaced or cleared, but empty accounts can b
  for(const value of ['99999999999',''])await assert.rejects(service.updateEmployeeDetails(profile,employeeId,{version:4,officeData:{'Bank Account No':value}}),/account number is locked/);
  await service.updateEmployeeDetails(profile,employeeId,{version:4,officeData:{'Bank Account No':'00123456789','Bank Name':'SBI'}});
 });
+
+test('new account number saves separately without changing the frozen original',async()=>{
+ const {service,record}=fixture();
+ record.data.officeData['Bank Account No']='00123456789';
+ const saved=await service.updateEmployeeDetails(profile,employeeId,{version:4,officeData:{'New Account No':'00987654321'}});
+ assert.equal(saved.data.officeData['Bank Account No'],'00123456789');
+ assert.equal(saved.data.officeData['New Account No'],'00987654321');
+ for(const value of ['abc','1234567890123456789'])await assert.rejects(service.updateEmployeeDetails(profile,employeeId,{version:4,officeData:{'New Account No':value}}),/up to 18 digits/);
+});

@@ -114,3 +114,18 @@ it('opens, edits and saves a review without new API calls and keeps approval tie
  expect((screen.getByLabelText('Full Name *') as HTMLInputElement).value).toBe('Original Employee');
  expect(fetchMock.mock.calls.length).toBe(requestCount);
 });
+
+it('preserves the frozen account while a new account number is saved and restored',()=>{
+ const bankRecord={...record,data:{...record.data,officeData:{...record.data.officeData,'Bank Account No':'00123456789'}}};
+ const first=render(<LocalEmployeeReviewForm record={bankRecord} owner="reviewer"/>);
+ fireEvent.click(screen.getByRole('button',{name:'Bank Details'}));
+ fireEvent.click(screen.getByRole('button',{name:'Edit'}));
+ expect((screen.getByLabelText('Bank Account No') as HTMLInputElement).readOnly).toBe(true);
+ expect((screen.getByLabelText('New Account No') as HTMLInputElement).readOnly).toBe(false);
+ fireEvent.change(screen.getByLabelText('New Account No'),{target:{value:'00987654321'}});
+ fireEvent.click(screen.getByRole('button',{name:'Save & Lock'}));first.unmount();
+ render(<LocalEmployeeReviewForm record={bankRecord} owner="reviewer"/>);
+ fireEvent.click(screen.getByRole('button',{name:'Bank Details'}));
+ expect(screen.getByLabelText('Bank Account No')).toHaveValue('00123456789');
+ expect(screen.getByLabelText('New Account No')).toHaveValue('00987654321');
+});

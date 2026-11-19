@@ -188,6 +188,7 @@ export function createService(pool,{telegram=createTelegramNotifier()}={}) {
       if(!officeData||typeof officeData!=='object'||Array.isArray(officeData))throw problem('Employee details are required');
       const changes=Object.entries(officeData);
       if(!changes.length||changes.length>250||changes.some(([key,value])=>key.length>150||typeof value!=='string'||value.length>4000))throw problem('Invalid employee details');
+      if(officeData['New Account No']?.trim()&&!/^[0-9]{1,18}$/.test(officeData['New Account No'].trim()))throw problem('New Account No must contain up to 18 digits.');
       const missing=changes.find(([key,value])=>requiredEmployeeDetail(key)&&!value.trim());
       if(missing)throw problem(missing[0].replace(/\s*\*$/,'')+' is required');
       if(changes.some(([key])=>lockedEmployeeDetails.has(key)))throw problem('Use Employee Transfer for posting site changes. Employee code and status cannot be edited here.');
