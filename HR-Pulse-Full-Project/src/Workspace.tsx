@@ -98,10 +98,10 @@ export default function Workspace({session,initialConfig,logout}:{session:Sessio
     </header>
     <div className="content">{page==='Master Configuration'&&<section className="master-configuration" aria-label="Master Configuration">
       <div className="module-tabs" aria-label="Master configuration menus">
-        {['Shift Master','Holiday & Leave Master','Hierarchy','Employee Master'].map(item=><button type="button" key={item} className={masterMenu===item?'selected':''} aria-pressed={masterMenu===item} onClick={()=>setMasterMenu(item)}>{item}</button>)}
+        {['Shift Master','Holiday & Leave Master','Trial Hierarchy','Employee Master'].map(item=><button type="button" key={item} className={masterMenu===item?'selected':''} aria-pressed={masterMenu===item} onClick={()=>setMasterMenu(item)}>{item}</button>)}
       </div>
       {masterMenu==='Shift Master'?<ShiftMaster grant={session.grant} module={config.shifts}/>
-        :masterMenu==='Hierarchy'?<HierarchyMaster grant={session.grant}/>
+        :masterMenu==='Trial Hierarchy'?<HierarchyMaster grant={session.grant}/>
         :masterMenu==='Holiday & Leave Master'?<LeaveMaster grant={session.grant} config={config} actor={profile.actor||''} canApprove={access.has('Approval Management')} notice={setNotice}/>
         :masterMenu==='Employee Master'&&access.has('Master Configuration')&&access.has('Employee Master')
           ?<EmployeeMasterRegister grant={session.grant}/>

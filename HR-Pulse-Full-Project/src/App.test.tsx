@@ -194,7 +194,7 @@ it.each([true,false])('loads only the HR employee register when the configuratio
   vi.stubGlobal('fetch',fetchMock);
   render(<App/>);
   expect(await screen.findByRole('button',{name:'Approval Master'})).toBeTruthy();
-  await screen.findByRole('heading',{name:'Joining Approval Hierarchy'});
+  await screen.findByRole('heading',{name:'Trial Hierarchy'});
   fireEvent.click(screen.getByRole('button',{name:'Leave'}));
   await screen.findByRole('heading',{name:'Leave Approval Flow'});
   expect(await screen.findByRole('button',{name:'Save leave flow'})).toBeTruthy();
@@ -202,8 +202,8 @@ it.each([true,false])('loads only the HR employee register when the configuratio
   fireEvent.click(screen.getByRole('button',{name:'OD'}));
   expect(screen.getByRole('heading',{name:'OD Approval Flow'})).toBeTruthy();
   expect(await screen.findByRole('button',{name:'Save OD flow'})).toBeTruthy();
-  fireEvent.click(screen.getByRole('button',{name:'Hierarchy'}));
-  await screen.findByRole('heading',{name:'Joining Approval Hierarchy'});
+  fireEvent.click(screen.getByRole('button',{name:'Trial Hierarchy'}));
+  await screen.findByRole('heading',{name:'Trial Hierarchy'});
   window.location.hash='';
  });
 
