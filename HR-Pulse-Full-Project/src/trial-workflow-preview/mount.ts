@@ -260,7 +260,8 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     ).join('');
   }
   function renderDrivingLicenceValidDates(dates:string[]){
-    $('#f_dlvalids').innerHTML=(dates.length?dates:['']).map((value,index)=>`<input type="date" data-dl-valid aria-label="Driving licence valid up to ${index+1}" value="${esc(value)}">`).join('');
+    const values=[dates[0]||'',dates[1]||''],labels=['Valid up to (TR)','Valid up to (NT)'];
+    $('#f_dlvalids').innerHTML=values.map((value,index)=>`<label class="dl-valid"><span>${labels[index]}</span><input type="date" data-dl-valid aria-label="${labels[index]}" value="${esc(value)}"></label>`).join('');
   }
   function drivingLicenceClasses(){
     return $$<HTMLTableRowElement>('[data-dl-class-row]').map(row=>Object.fromEntries(dlClassFields.map(field=>[field,row.querySelector<HTMLInputElement>(`[data-dl-class="${field}"]`)?.value.trim()||''])) as DrivingLicenceClass).filter(row=>Object.values(row).some(Boolean));

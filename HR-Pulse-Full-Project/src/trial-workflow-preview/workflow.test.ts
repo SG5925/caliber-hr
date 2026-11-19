@@ -79,6 +79,8 @@ describe('Trial workflow preview',()=>{
     expect(getByLabelText('Uploaded front driving licence PDF preview')).toBeInTheDocument();
     expect(getByLabelText('Uploaded back driving licence PDF preview')).toBeInTheDocument();
     await waitFor(()=>expect(el('#f_dl')).toHaveValue('DL-123'));
+    expect(el<HTMLInputElement>('[aria-label="Valid up to (TR)"]')).toHaveValue('2027-01-02');
+    expect(el<HTMLInputElement>('[aria-label="Valid up to (NT)"]')).toHaveValue('2030-01-02');
     click('#aadhaarContinue');
     expect(el('#v-hr').hidden).toBe(false);
     expect(el('#v-aadhaar').hidden).toBe(true);

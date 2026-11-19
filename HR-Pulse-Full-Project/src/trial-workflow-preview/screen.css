@@ -67,6 +67,7 @@ button{cursor:pointer}
 .row>.v{padding:5px 10px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;min-width:0}
 .row input[type=text],.row input[type=date],.row input[type=datetime-local],.row input[type=tel],.row input[type=number],.row select,.row textarea{width:100%;border:0;border-bottom:1px dashed var(--line-strong);background:transparent;padding:5px 2px;font-size:14px}
 .row textarea{resize:vertical;min-height:34px}
+.dl-valid{display:grid;grid-template-columns:130px minmax(150px,1fr);align-items:center;gap:8px;flex:1 1 320px;color:var(--muted);font-size:12px;font-weight:600}.row .dl-valid input[type=date]{min-width:150px}
 .chk{display:inline-flex;gap:5px;align-items:center;font-size:13px;white-space:nowrap}
 .photo{border-left:1px solid var(--line-strong);display:grid;place-items:center;padding:10px}
 .photo label{width:120px;height:150px;border:1.5px dashed var(--line-strong);border-radius:6px;display:grid;place-items:center;text-align:center;font-size:12px;color:var(--accent);cursor:pointer;overflow:hidden;background:var(--sunk)}
