@@ -129,3 +129,12 @@ it('preserves the frozen account while a new account number is saved and restore
  expect(screen.getByLabelText('Bank Account No')).toHaveValue('00123456789');
  expect(screen.getByLabelText('New Account No')).toHaveValue('00987654321');
 });
+
+it('shows employee marital status once in Family Details and offers family Aadhaar preview',()=>{
+ const familyRecord={...record,data:{...record.data,officeData:{...record.data.officeData,'Marital Status':'Married','Family Aadhaar 1':'parent.pdf'}}};
+ render(<LocalEmployeeReviewForm record={familyRecord} owner="reviewer" readOnly/>);
+ fireEvent.click(screen.getByRole('button',{name:'Family Details'}));
+ expect(screen.getByLabelText('Marital Status *')).toHaveValue('Married');
+ expect(screen.getByLabelText('Marital Status *')).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Preview Family Aadhaar 1: parent.pdf'})).toBeTruthy();
+});

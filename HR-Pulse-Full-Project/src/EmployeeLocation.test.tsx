@@ -555,7 +555,7 @@ describe('Employee Master tabs',()=>{
   fireEvent.change(screen.getByLabelText('Department',{exact:true,selector:'select:not([name])'}),{target:{value:'Operator'}});
   fireEvent.change(screen.getByLabelText('Sub-department',{exact:true,selector:'select:not([name])'}),{target:{value:'Drilling'}});
   fireEvent.change(screen.getByLabelText('Designation',{exact:true,selector:'select:not([name])'}),{target:{value:'Drill Operator'}});
-  for(const [field,value] of Object.entries({'Identification Mark':'Mole on left hand','Full Name as per Aadhaar':'Employee One','Father / Spouse Name':'Parent One','Aadhaar No.':'234500000000','Full Name':'Employee One','Employee Code':'EMP-1','Mobile':'9876543210','Candidate E-mail':'employee@example.com','PAN No.':'ABCDE1234F','Present Address':'Nagpur','Reference Type':'Supervisor','Reference Name':'Supervisor One','Emergency Contact Name':'Contact One','Emergency Contact Number':'9876543211','Reporting To':'Manager','Joining Date':'2026-11-12','Shift':'General','Employment Type':'Permanent','Salary Type':'STD','Monthly Gross Salary':'30000','Site / Project':'Majri OB'}))setField(field,value);
+  for(const [field,value] of Object.entries({'Marital Status':'Single','Identification Mark':'Mole on left hand','Full Name as per Aadhaar':'Employee One','Father / Spouse Name':'Parent One','Aadhaar No.':'234500000000','Full Name':'Employee One','Employee Code':'EMP-1','Mobile':'9876543210','Candidate E-mail':'employee@example.com','PAN No.':'ABCDE1234F','Present Address':'Nagpur','Reference Type':'Supervisor','Reference Name':'Supervisor One','Emergency Contact Name':'Contact One','Emergency Contact Number':'9876543211','Reporting To':'Manager','Joining Date':'2026-11-12','Shift':'General','Employment Type':'Permanent','Salary Type':'STD','Monthly Gross Salary':'30000','Site / Project':'Majri OB'}))setField(field,value);
   fireEvent.click(screen.getByRole('button',{name:/Document Checklist/}));
   upload('Upload Candidate photo','photo.jpg','image/jpeg');
   upload('Upload Aadhaar (masked display)','aadhaar.pdf','application/pdf');
@@ -583,3 +583,24 @@ describe('Aadhaar printed field positions',()=>{
 });
 
 it('matches bulk file names to checklist documents',()=>{const names=['Candidate photo','Aadhaar (masked display)','PAN','Education certificates','Bank proof / cancelled cheque'];expect(matchChecklistDocument('Rahul_PAN.pdf',names)).toBe('PAN');expect(matchChecklistDocument('aadhar-card.jpg',names)).toBe('Aadhaar (masked display)');expect(matchChecklistDocument('passport photo.png',names)).toBe('Candidate photo');expect(matchChecklistDocument('10th marksheet.pdf',names)).toBe('Education certificates');expect(matchChecklistDocument('cancelled cheque.jpg',names)).toBe('Bank proof / cancelled cheque');expect(matchChecklistDocument('company.pdf',names)).toBeUndefined();expect(matchChecklistDocument('driving licence.pdf',names)).toBeUndefined();});
+
+for(const group of ['Corporate / HO','OB / COAL'] as const)it(group+' requires employee marital status and Aadhaar for populated family rows',()=>{
+ render(<EmployeeLocation employeeGroup={group}/>);
+ fireEvent.click(screen.getByRole('button',{name:/Family Details/}));
+ expect(screen.getByLabelText('Marital Status *')).toBeRequired();
+ expect(within(screen.getByLabelText('Marital Status *')).getAllByRole('option').map(o=>o.textContent)).toEqual(['Select','Single','Married','Divorced']);
+ const upload=screen.getByLabelText('Upload Family Aadhaar 3');
+ expect(upload).not.toBeRequired();
+ fireEvent.change(screen.getByLabelText('Family Member Name 3'),{target:{value:'Parent Three'}});
+ expect(upload).toBeRequired();
+ expect(screen.getByLabelText('Upload Family Aadhaar 1')).not.toBeRequired();
+ fireEvent.change(screen.getByLabelText('Marital Status *'),{target:{value:'Married'}});
+ fireEvent.click(screen.getByRole('button',{name:'Save & Continue'}));
+ expect(screen.getByRole('alert')).toHaveTextContent('Family Aadhaar 3');
+ fireEvent.change(upload,{target:{files:[new File(['aadhaar'],'parent.pdf',{type:'application/pdf'})]}});
+ fireEvent.click(screen.getByRole('button',{name:'Save & Continue'}));
+ expect(screen.queryByRole('alert')).toBeNull();
+});
+it('preserves family row positions and Aadhaar associations when earlier rows are empty',()=>{
+ expect(joiningOfficeData({'Marital Status':'Married','Family Member Name 3':'Parent Three','Relationship 3':'Mother','Upload Family Aadhaar 3':'parent.pdf'})).toMatchObject({'Marital Status':'Married','Family Member Name':' |  | Parent Three',Relationship:' |  | Mother','Family Aadhaar 3':'parent.pdf'});
+});
