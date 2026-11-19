@@ -86,23 +86,17 @@ describe('Corporate / HO import headers',()=>{
 });
 
 describe('Employee Master tabs',()=>{
- it('keeps empty site dropdowns for Chadda and KSR in both employee groups',()=>{
-  const view=render(<EmployeeLocation employeeGroup="OB / COAL"/>);
-  fireEvent.change(screen.getByLabelText('Select company'),{target:{value:'Caliber Mining And Logistics Ltd'}});
-  fireEvent.change(screen.getByLabelText('Select region'),{target:{value:'WCL'}});
-  fireEvent.change(screen.getByLabelText('Select site'),{target:{value:'Dhoptala OB'}});
+ it('shows only CMLL and CMPL SCR Joint Venture for OB / COAL',()=>{
+  render(<EmployeeLocation employeeGroup="OB / COAL"/>);
   const options=(select:HTMLSelectElement)=>Array.from(select.options,option=>option.text);
-  for(const company of ['CHADDA TRADING COMPANY','KSR FREIGHT CARRIERS']){
-   fireEvent.change(screen.getByLabelText('Select company'),{target:{value:company}});
-   for(const region of ['WCL','NCL']){
-    fireEvent.change(screen.getByLabelText('Select region'),{target:{value:region}});
-    const site=screen.getByLabelText('Select site') as HTMLSelectElement;
-    expect(options(site)).toEqual(['Select site']);expect(site.value).toBe('');
-    const posting=document.querySelector('select[name="Site"]') as HTMLSelectElement;
-    expect(options(posting)).toEqual(['Select']);expect(posting.required).toBe(false);
-   }
-  }
-  view.rerender(<EmployeeLocation employeeGroup="Corporate / HO"/>);
+  expect(options(screen.getByLabelText('Select company') as HTMLSelectElement)).toEqual([
+   'Select company','CALIBER MINING AND LOGISTICS LIMITED','CMPL SCR JOINT VENTURE',
+  ]);
+ });
+
+ it('keeps empty site dropdowns for Chadda and KSR in Corporate / HO',()=>{
+  render(<EmployeeLocation employeeGroup="Corporate / HO"/>);
+  const options=(select:HTMLSelectElement)=>Array.from(select.options,option=>option.text);
   for(const company of ['CHADDA TRADING COMPANY','KSR FREIGHT CARRIERS']){
    fireEvent.change(screen.getByLabelText('Select company'),{target:{value:company}});
    for(const region of ['Nagpur Corporate Office','Chandrapur Head Office']){
