@@ -5,6 +5,7 @@ import HRCalendar from './HRCalendar';
 import AssetManagement from './AssetManagement';
 import HierarchyMaster from './HierarchyMaster';
 import SalarySchemeMaster from './SalarySchemeMaster';
+import PayrollProcessing from './PayrollProcessing';
 import TrialForm,{loadSelection,saveSelection,showsTrialForm,type TrialSelection} from './TrialForm';
 import LeaveMaster,{LeaveRequests} from './LeaveMaster';
 import ShiftMaster from './ShiftMaster';
@@ -127,7 +128,7 @@ export default function Workspace({session,initialConfig,logout}:{session:Sessio
     {page==='Dashboard'&&<Dashboard tab={dashboardTab} select={setDashboardTab} grant={session.grant} actor={profile.actor||''} notice={setNotice} canSeeEmployees={Boolean(config.employees)} canSeeAttendance={access.has('Employee Master')} canApprove={access.has('Approval Management')} onEmployees={()=>navigate('Employee Directory')} showEmployees={access.has('Employee Directory')}/>}
     {page==='Reports & MIS'&&<Overview grant={session.grant} report onEmployees={()=>navigate('Employee Directory')} showEmployees={access.has('Employee Directory')}/>}
     {page==='Master Configuration'&&<><div className="module-tabs master-groups">{masterGroups.map((g,i)=>g.kinds.some(k=>config[k])&&<button key={g.name} className={group===i?'selected':''} onClick={()=>{setGroup(i);setKind(g.kinds.find(k=>config[k])||'');}}>{g.name}</button>)}</div><div className="module-tabs">{groups.map(k=><button key={k} className={kind===k?'selected':''} onClick={()=>setKind(k)}>{config[k].title}</button>)}</div></>}
-    {page==='Payroll Management'&&<>{payrollMenu==='Salary Scheme'?<SalarySchemeMaster actor={profile.actor||''} canApprove={access.has('Approval Management')}/>:<ModuleLanding title={payrollMenu}/>}</>}
+    {page==='Payroll Management'&&<>{payrollMenu==='Salary Scheme'?<SalarySchemeMaster actor={profile.actor||''} canApprove={access.has('Approval Management')}/>:payrollMenu==='Payroll Processing'?<PayrollProcessing grant={session.grant}/>:<ModuleLanding title={payrollMenu}/>}</>}
     {page==='Asset Management'&&<AssetManagement grant={session.grant} config={config} notice={setNotice}/>}
     {page==='Calendar'&&<HRCalendar grant={session.grant} config={config}/>}
     {page==='Holiday & Leave'&&<><p className="help-text">Leave entitlement uses calendar days, including weekends and holidays. Split requests at the calendar-year boundary.</p><div className="module-tabs">{['leaveRequests','holidays','leavePolicies'].filter(k=>config[k]).map(k=><button key={k} className={kind===k?'selected':''} onClick={()=>setKind(k)}>{config[k].title}</button>)}</div></>}
