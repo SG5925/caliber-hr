@@ -8,6 +8,7 @@ import * as trialResultFiles from './trialResultFiles';
 import type {Trial} from './records';
 
 const scope = {company:'CMLL',site:'Jayant OB East',region:'NCL',group:'OB / COAL',name:'Sample Signer',owner:'sample',department:'Driver'};
+const hierarchyTrainer={actor:'sajadali',name:'Sajad Ali',site:'Jayant OB East'};
 let dispose: (()=>void)|undefined;
 function setup(overrides: Partial<typeof scope> = {},onCleared?: PrepareJoining) {
   dispose?.();
@@ -39,6 +40,23 @@ describe('Trial workflow preview',()=>{
     expect(sameDocumentBirthDate('2000-01-02','2001-03-04')).toBe(false);
     expect(sameDocumentBirthDate('','2000-01-02')).toBe(false);
   });
+  it('fetches and freezes Trial conducted by from the Driver Trainer hierarchy',async()=>{
+    sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43)}));
+    const request=vi.spyOn(window,'fetch').mockResolvedValue(Response.json(hierarchyTrainer));
+    const {el,click,input,change}=setup();
+    click('[data-tab="hr"]');
+    input('#f_name','Hierarchy Candidate');
+    input('#f_mobile','9876543210');
+    click('input[name="f_vehicle"][value="Excavator"]');
+    change('#d_dl','Yes');
+    change('#d_medical','Yes');
+    fireEvent.submit(el('#single'));
+    change('#role','trainer');
+    await waitFor(()=>expect(el('[aria-label="Hierarchy Candidate: Trial conducted by"]')).toHaveValue('Sajad Ali'));
+    expect(el('[aria-label="Hierarchy Candidate: Trial conducted by"]')).toHaveAttribute('readonly');
+    expect(el('[aria-label="Hierarchy Candidate: Trial conducted by"]')).toHaveClass('trainer-frozen');
+    expect(request).toHaveBeenCalledWith(expect.stringMatching(/\/telegram\/trial-trainer$/),expect.objectContaining({method:'POST'}));
+  });
   it('scans Aadhaar with the signed-in session and fills only empty candidate fields',async()=>{
     const grant = 'a'.repeat(43);
     sessionStorage.setItem('hrPulseSession', JSON.stringify({grant}));
@@ -47,6 +65,7 @@ describe('Trial workflow preview',()=>{
       uid:'234500000000', address:'Sample Address', gender:'',
     };
     const scan = vi.spyOn(window,'fetch')
+      .mockResolvedValueOnce(Response.json(hierarchyTrainer))
       .mockResolvedValueOnce(Response.json({details}))
       .mockResolvedValueOnce(Response.json({matches:[]}))
       .mockResolvedValueOnce(Response.json({details:{name:'Different Name',dob:'2000-01-02',licenceNumber:'DL-123',classDetails:[
@@ -128,6 +147,7 @@ describe('Trial workflow preview',()=>{
     sessionStorage.setItem('hrPulseSession',JSON.stringify({grant}));
     const uid='234500000000';
     const fetch=vi.spyOn(window,'fetch')
+      .mockResolvedValueOnce(Response.json(hierarchyTrainer))
       .mockResolvedValueOnce(Response.json({details:{uid,name:'Sample Candidate',relationName:'',dob:'',address:'',gender:''}}))
       .mockResolvedValueOnce(Response.json({matches:[match]}));
     const {el,click,getByLabelText}=setup();
@@ -161,6 +181,7 @@ describe('Trial workflow preview',()=>{
       {...savedPass,id:'unrelated-pass',site:'Majri OB',trialDate:'2026-11-10',vehicles:['Grader']},
     ]));
     vi.spyOn(window,'fetch')
+      .mockResolvedValueOnce(Response.json(hierarchyTrainer))
       .mockResolvedValueOnce(Response.json({details:{uid,name:'Sample Candidate',relationName:'',dob:'',address:'',gender:''}}))
       .mockResolvedValueOnce(Response.json({matches:[{result:'FAIL',site:'Jayant OB East',equipment:'Dozer',trialDate:'2026-11-01'}]}));
     const {el,getByLabelText}=setup();
@@ -185,6 +206,7 @@ describe('Trial workflow preview',()=>{
     Object.defineProperty(excel,'arrayBuffer',{value:async()=>bytes});
     const details={name:'Read Candidate',relationName:'Sample Parent',dob:'2000-01-02',uid:'234500000000',address:'Sample Address',gender:''};
     vi.spyOn(window,'fetch')
+      .mockResolvedValueOnce(Response.json(hierarchyTrainer))
       .mockResolvedValueOnce(Response.json({details}))
       .mockResolvedValueOnce(Response.json({matches:[]}))
       .mockResolvedValueOnce(Response.json({details:{...details,uid:''}}))
@@ -239,7 +261,7 @@ describe('Trial workflow preview',()=>{
     change('#role','trainer');
     expect(el('#trList')).toHaveTextContent('Submit a candidate in Part 1');
     expect(el('#trList [aria-label="PASS"]')).toBeDisabled();
-    expect(el('#trList [aria-label="Trial conducted by"]')).toBeDisabled();
+    expect(el('#trList [aria-label="Trial conducted by"]')).toHaveAttribute('readonly');
     expect(el('#trList [data-choose-result-file]')).toBeDisabled();
     expect(el('#trList [data-choose-driving-video]')).toBeDisabled();
     change('#role','hr');
@@ -259,19 +281,24 @@ describe('Trial workflow preview',()=>{
     change('#role','director');
     expect(el('#apList').textContent).toContain('Nothing waiting for Director');
     change('#role','trainer');
-    expect(el('[aria-label="Sample Pass: Trial conducted by"]')).toBeEnabled();
+    expect(el('[aria-label="Sample Pass: Trial conducted by"]')).toHaveAttribute('readonly');
+    expect(el('[aria-label="Sample Pass: Trial conducted by"]')).toHaveValue('Sample Signer');
+    expect(el('[aria-label="Sample Pass: Trial conducted by"]')).toHaveClass('trainer-frozen');
     expect(el('[aria-label="Sample Pass: Upload trial result"]')).toBeEnabled();
     expect(el('[aria-label="Sample Pass: Upload Driving Video"]')).toBeEnabled();
     expect(el('.trial-upload-actions')).toContainElement(el('[aria-label="Sample Pass: Upload trial result"]'));
     expect(el('.trial-upload-actions')).toContainElement(el('[aria-label="Sample Pass: Upload Driving Video"]'));
+    click('[aria-label="Sample Pass: PASS"]');
+    click('#trSubmit');
+    expect(el('#toast')).toHaveTextContent('Upload the trial result file for Sample Pass');
     fireEvent.change(el('[data-result-file]'),{target:{files:[file]}});
+    click('#trSubmit');
+    expect(el('#toast')).toHaveTextContent('Upload the driving video for Sample Pass');
     fireEvent.change(el('[data-driving-video]'),{target:{files:[video]}});
     expect(el('#trList')).toHaveTextContent(file.name);
     expect(el('#trList')).toHaveTextContent(video.name);
-    click('[aria-label="Sample Pass: PASS"]');
     click('[aria-label="Sample Pass: Recommend Operator"]');
     input('[aria-label="Sample Pass: Machine"]','Sample excavator');
-    input('[aria-label="Sample Pass: Trial conducted by"]','Sample Trainer');
     input('[aria-label="Sample Pass: Examiner remarks"]','Completed the inspection');
     click('#trSubmit');
     expect(el('#trSubmit')).toBeDisabled();
@@ -302,7 +329,7 @@ describe('Trial workflow preview',()=>{
     click('#ovList [data-open]');
     expect(el('#modalBox').textContent).toContain('Approvals');
     expect(el('#modalBox').textContent).toContain('Operator – Sample excavator');
-    expect(el('#modalBox').textContent).toContain('Sample Trainer');
+    expect(el('#modalBox').textContent).toContain('Sample Signer');
     expect(el('#modalBox').textContent).toContain('Completed the inspection');
     expect(el('#modalBox .sigs').textContent).toContain('DirectorApproved');
     const next = setup();
@@ -324,7 +351,8 @@ describe('Trial workflow preview',()=>{
     expect(network).not.toHaveBeenCalled();
   });
 
-  it('submits a bulk batch, requires a reason for FAIL and records a rejection note',()=>{
+  it('submits a bulk batch, requires a reason for FAIL and records a rejection note',async()=>{
+    vi.spyOn(trialResultFiles,'saveTrialResultFiles').mockResolvedValue();
     const {el,click,input,change} = setup();
     click('[data-tab="hr"]');
     click('[data-m="bulk"]');
@@ -346,8 +374,12 @@ describe('Trial workflow preview',()=>{
     click('#trSubmit');
     expect(el('#toast').textContent).toContain('Enter the fail reason');
     input('[aria-label="Batch Candidate: Failure reason"]','Did not complete trial safely');
+    const batchCard=el('[aria-label="Batch Candidate: Upload trial result"]').closest<HTMLElement>('[data-id]')!;
+    fireEvent.change(batchCard.querySelector('[data-result-file]')!,{target:{files:[new File(['result'],'batch-result.pdf',{type:'application/pdf'})]}});
+    const refreshedCard=el('[aria-label="Batch Candidate: Upload Driving Video"]').closest<HTMLElement>('[data-id]')!;
+    fireEvent.change(refreshedCard.querySelector('[data-driving-video]')!,{target:{files:[new File(['video'],'batch-driving.mp4',{type:'video/mp4'})]}});
     click('#trSubmit');
-    expect(el('#bTrainer')).toHaveTextContent('1');
+    await waitFor(()=>expect(el('#bTrainer')).toHaveTextContent('1'));
     expect(el('#tgpop').hidden).toBe(true);
     change('#role','pm');
     click('[aria-label="Select Batch Candidate"]');

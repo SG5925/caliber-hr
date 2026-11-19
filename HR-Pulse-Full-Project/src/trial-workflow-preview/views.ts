@@ -30,14 +30,14 @@ function resultFields(id: string, name: string, draft?: Outcome, allowed = false
     `<label class="chk"><input type="radio" name="recommended-${esc(id)}" data-f="post" value="${option}" aria-label="${prefix}Recommend ${option}" ${draft?.post===option?'checked':''} ${passDisabled}> ${option}</label>`
   ).join('');
   return `<div class="rows trainer-fields">
-    ${row('Trial result file', `
+    ${row('Trial result files *', `
       <span class="trial-upload-actions">
         <button type="button" class="btn pri" data-choose-result-file aria-label="${prefix}${file?'Replace trial result file':'Upload trial result'}" ${disabled}>${file?'Replace file':'Upload trial result'}</button>
         <button type="button" class="btn pri" data-choose-driving-video aria-label="${prefix}${video?'Replace driving video':'Upload Driving Video'}" ${disabled}>${video?'Replace video':'Upload Driving Video'}</button>
       </span>
       <input type="file" data-result-file accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" ${disabled} hidden>
       <input type="file" data-driving-video accept=".mp4,.webm,.mov,video/mp4,video/webm,video/quicktime" ${disabled} hidden>
-      <span class="note">Optional · Result: PDF, JPG or PNG · Video: MP4, WebM or MOV (max 3 MB)</span>
+      <span class="note">Required · Result: PDF, JPG or PNG · Video: MP4, WebM or MOV (max 3 MB)</span>
       ${file ? `<span class="trial-result-filename" role="status">${esc(file.name)}</span><button type="button" class="btn sm" data-remove-result-file ${disabled}>Remove file</button>` : ''}
       ${video ? `<span class="trial-result-filename" role="status">${esc(video.name)}</span><button type="button" class="btn sm" data-remove-driving-video ${disabled}>Remove video</button>` : ''}`)}
     ${row('Result', `<div class="pf">${resultButtons}</div>`)}
@@ -45,7 +45,7 @@ function resultFields(id: string, name: string, draft?: Outcome, allowed = false
       <div class="recommended-post" role="group" aria-label="${prefix}Recommended post">${posts}</div>
       <label class="trainer-machine">Machine <input type="text" data-f="machine" aria-label="${prefix}Machine" value="${esc(draft?.machine)}" ${passDisabled}></label>`)}
     ${row(`If FAIL – reason${draft?.result==='FAIL'?' *':''}`, `<input type="text" data-f="reason" aria-label="${prefix}Failure reason" value="${esc(draft?.reason)}" ${draft?.result==='FAIL'?'required aria-required="true"':''} ${failDisabled}>`)}
-    ${row('Trial conducted by', `<input type="text" data-f="trainer" aria-label="${prefix}Trial conducted by" value="${esc(draft?.trainer)}" placeholder="Your name if blank" ${disabled}>`)}
+    ${row('Trial conducted by', `<input type="text" class="trainer-frozen" data-f="trainer" aria-label="${prefix}Trial conducted by" value="${esc(draft?.trainer)}" placeholder="Fetched from Driver Trainer hierarchy" readonly>`)}
     ${row('Examiner remarks', `<input type="text" data-f="remarks" aria-label="${prefix}Examiner remarks" value="${esc(draft?.remarks)}" ${disabled}>`)}
   </div>`;
 }

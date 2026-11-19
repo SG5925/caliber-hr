@@ -8,8 +8,9 @@ import {equipment, type Trial} from './records';
 
 export type Delivery = {message: string; recipients: number; connected: string[]; bot?: string; configured?: boolean; issues?: string[]};
 export type TrialScope = {company: string; site: string; region: string; group: string; department: string};
+export type TrialTrainer = {actor:string;name:string;site:string;reason?:string};
 const target = ({site, region, group, company}: TrialScope) => ({site, region, group, company});
-type Attachment = {name: string; mime: string; data: string};
+type Attachment = {name: string; mime: string; data: string; kind?:'photo'|'trialResult'|'drivingVideo'};
 const dlClassDetails = (row: Trial) => (row.dlClasses||[]).map(item=>[
   `Class / Code: ${item.code||'–'}`,`Issued by: ${item.issuedBy||'–'}`,`Date of issue: ${item.dateOfIssue||'–'}`,
   `Vehicle category: ${item.vehicleCategory||'–'}`,`Badge number: ${item.badgeNumber||'–'}`,
@@ -26,18 +27,22 @@ const fields = (row: Trial): Record<string,string> => ({
   ...(row.outcome ? {'Result': row.outcome.result, 'If PASS – recommended for': row.outcome.result==='PASS' ? row.outcome.post : '', 'Machine': row.outcome.machine,
     'If FAIL – reason': row.outcome.reason, 'Examiner name': row.outcome.trainer, 'Trial conducted by': row.outcome.trainer, 'Examiner remarks': row.outcome.remarks} : {}),
 });
-const dataUrl = (name: string, url: string): Attachment | null => {
+const dataUrl = (name: string, url: string, kind?:Attachment['kind']): Attachment | null => {
   const m = String(url||'').match(/^data:([^;,]+)[^,]*,(.*)$/);
-  return m ? {name: name+(m[1].includes('png')?'.png':m[1].includes('pdf')?'.pdf':'.jpg'), mime: m[1], data: m[2]} : null;
+  return m ? {name: name+(m[1].includes('png')?'.png':m[1].includes('pdf')?'.pdf':'.jpg'), mime: m[1], data: m[2],kind} : null;
 };
-const fileAttachment = (file?: File) => new Promise<Attachment | null>(resolve => {
+const fileAttachment = (file?: File,kind?:Attachment['kind']) => new Promise<Attachment | null>(resolve => {
   if (!file || file.size > 4*1024*1024) {resolve(null); return;}
   const reader = new FileReader();
-  reader.onload = () => {const m = String(reader.result||'').match(/^data:([^;,]+)[^,]*,(.*)$/); resolve(m ? {name: file.name, mime: m[1], data: m[2]} : null);};
+  reader.onload = () => {const m = String(reader.result||'').match(/^data:([^;,]+)[^,]*,(.*)$/); resolve(m ? {name: file.name, mime: m[1], data: m[2],kind} : null);};
   reader.onerror = () => resolve(null);
   reader.readAsDataURL(file);
 });
 const grantOrThrow = () => {const grant = savedSession()?.grant; if (!grant) throw new Error('Sign in again to send on Telegram.'); return grant;};
+
+export async function fetchTrialTrainer(scope:TrialScope):Promise<TrialTrainer>{
+  return api<TrialTrainer>(grantOrThrow(),'telegram/trial-trainer','POST',target(scope));
+}
 
 /* Human-readable delivery line for the popup. */
 export function deliveryStatus(d: Delivery, names: (key: string) => string = key => key) {
@@ -51,7 +56,7 @@ export async function sendPart1(created: Trial[], scope: TrialScope): Promise<De
   const grant = grantOrThrow();
   const out = await api<{batchId: string; telegram: Delivery}>(grant, 'telegram/trial-part1', 'POST', {
     heading: scope.site, ...target(scope), department: scope.department, trialBy: 'driver trainer', batchId: created[0]?.batch || '',
-    candidates: created.map(row => ({formNo: row.formNo, fields: fields(row), attachments: [dataUrl('photo', row.photo)].filter(Boolean)})),
+    candidates: created.map(row => ({formNo: row.formNo, fields: fields(row), attachments: [dataUrl('photo', row.photo,'photo')].filter(Boolean)})),
   });
   return out.telegram;
 }
@@ -61,7 +66,7 @@ export async function sendResults(changed: Trial[], resultFiles: Map<string, Fil
   const batchId = changed.length > 1 ? (changed[0].batch || 'B-'+changed[0].formNo.replace(/\W+/g,'').slice(-6).toUpperCase()) : '';
   const rows = await Promise.all(changed.map(async row => ({
     formNo: row.formNo, fields: fields(row),
-    attachments: [dataUrl('photo', row.photo), await fileAttachment(resultFiles.get(row.id)), await fileAttachment(drivingVideos.get(row.id))].filter(Boolean),
+    attachments: [dataUrl('photo', row.photo,'photo'), await fileAttachment(resultFiles.get(row.id),'trialResult'), await fileAttachment(drivingVideos.get(row.id),'drivingVideo')].filter(Boolean),
   })));
   if (!batchId) {
     const out = await api<{telegram: Delivery}>(grant, 'telegram/trial-result', 'POST', {
@@ -95,7 +100,7 @@ export async function sendApproval(changed: Trial[], reviewer: 'pm'|'ohr'|'rhr'|
   const rows = await Promise.all(changed.map(async row => ({
     formNo: row.formNo, fields: fields(row), history: row.history, trialBy: row.outcome?.trainer || '',
     docs: Object.fromEntries(Object.entries(row.docs || {}).map(([k, v]) => [k, (v as {seen: string}).seen])),
-    attachments: [dataUrl('photo', row.photo), await fileAttachment(row.outcome?.attachment ? await resultFiles(row.outcome.attachment.id) : undefined), await fileAttachment(row.outcome?.videoAttachment ? await resultFiles(row.outcome.videoAttachment.id) : undefined)].filter(Boolean),
+    attachments: [dataUrl('photo', row.photo,'photo'), await fileAttachment(row.outcome?.attachment ? await resultFiles(row.outcome.attachment.id) : undefined,'trialResult'), await fileAttachment(row.outcome?.videoAttachment ? await resultFiles(row.outcome.videoAttachment.id) : undefined,'drivingVideo')].filter(Boolean),
   })));
   let xlsx = '';
   if (approved && reviewer === 'director' && changed.length > 1) {

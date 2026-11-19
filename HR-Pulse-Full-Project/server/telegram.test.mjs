@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {createTelegram,validateTelegramHierarchy,telegramSteps,webhookSecretValid,queueTelegram,deliverTelegram,leaveMessage} from './telegram.mjs';
+import {createTelegram,validateTelegramHierarchy,telegramSteps,webhookSecretValid,queueTelegram,deliverTelegram,leaveMessage,trialTrainerFor,requireTrialUploads} from './telegram.mjs';
 test('leave templates distinguish intermediate approval and include verified decision details',()=>{
  const record={code:'LR-1024',name:'Test Employee',data:{fromDate:'2026-10-29',toDate:'2026-10-30',chargeHandedOverTo:'Colleague'}};
  const details={siteName:'Nagpur CO',actor:'hr',name:'HR Manager',telegramId:'123456',at:'2026-10-29T10:00:00Z',comments:'Dates unavailable'};
@@ -170,4 +170,13 @@ test('trial approvals use the active Driver & Operator steps for the form group 
  assert.deepEqual(await actors('part1',{...east,site:'Jayant OB'}),[]);
  assert.deepEqual(await actors('part1',{...east,site:'Dudichua OB East'}),[]);
  assert.deepEqual(await actors('part1',{...east,site:''}),[]);
+});
+
+test('trial trainer comes from the active site hierarchy and both result uploads are required',async()=>{
+ const queries=[];const db={query:async(sql,args)=>{queries.push([sql,args]);if(sql.includes("kind='joiningHierarchies'"))return {rows:[{code:'NCL-JAYANT',data:{group:'NCL',steps:[{label:'Driver Trainer',approvers:['sajadali']}]}}]};if(sql.includes("kind='employees'"))return {rows:[{name:'Sajad Ali'}]};return {rows:[]};}};
+ assert.deepEqual(await trialTrainerFor(db,{site:'Jayant OB East',region:'NCL',group:'OB / COAL'}),{actor:'sajadali',name:'Sajad Ali',site:'Jayant OB East'});
+ assert.equal(queries.at(-1)[1][0],'sajadali');
+ assert.throws(()=>requireTrialUploads([]),/trial result file/);
+ assert.throws(()=>requireTrialUploads([{kind:'trialResult'}]),/driving video/);
+ assert.doesNotThrow(()=>requireTrialUploads([{kind:'trialResult'},{kind:'drivingVideo'}]));
 });

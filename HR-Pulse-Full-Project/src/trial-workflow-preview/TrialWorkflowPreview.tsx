@@ -4,6 +4,7 @@ import AadhaarUploader from '../AadhaarUploader';
 import DrivingLicenceUploader from '../DrivingLicenceUploader';
 import {savedSession} from '../api';
 import {mountTrialPreview,type PrepareJoining} from './mount';
+import {fetchTrialTrainer} from './telegramSend';
 
 type Workflow = ReturnType<typeof mountTrialPreview>;
 
@@ -27,7 +28,13 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
     },onCleared?async rows=>cleared.current?.(rows):undefined);
     setDisabled(false);
     setWorkflow(mounted);
-    return mounted.dispose;
+    let active=true;
+    if(savedSession()?.grant){
+      void fetchTrialTrainer({site,region,group,company,department})
+        .then(trainer=>{if(active)mounted.setTrainer(trainer.name,trainer.reason);})
+        .catch(error=>{if(active)mounted.setTrainer('',error instanceof Error?error.message:'Could not load the Driver Trainer hierarchy.');});
+    } else mounted.setTrainer(signerName);
+    return ()=>{active=false;mounted.dispose();};
   },[owner,legacyOwner,signerName,site,region,group,company,department]);
   useEffect(()=>{
     const preview=host.current?.shadowRoot;

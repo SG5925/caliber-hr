@@ -50,6 +50,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   const selected = new Set<string>();
   const effects = new AbortController();
   let tab: Tab = 'aadhaar', role: Role = 'hr', stageFilter = '', records: Trial[] = [], bulk = Array.from({length:3},blankBulkRow);
+  let trainerName = savedSession()?.grant ? '' : scope.name;
   let photo = '', photoLoading = false, photoVersion = 0, photoUrl = '', detailId = '', toastTimer: ReturnType<typeof setTimeout>;
   let aadhaarScanPending = false,aadhaarBirthDate='',drivingLicenceBusy=false,drivingLicenceReady=false;
   let aadhaarHistoryPending=false, aadhaarLookupVersion=0, checkedAadhaar='';
@@ -151,7 +152,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   const approvals = () => canApprove(role) ? sorted(records.filter(row=>row.stage===role)) : [];
   const draftFor = (row: Trial) => {
     let draft = drafts.get(row.id);
-    if (!draft) {draft = defaultOutcome(row); drafts.set(row.id,draft);}
+    if (!draft) {draft = {...defaultOutcome(row),trainer:trainerName}; drafts.set(row.id,draft);}
     return draft;
   };
   function renderTrainer() {
@@ -586,6 +587,11 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (!rows.length) return toast('Set PASS or FAIL for at least one candidate.');
     const invalid=rows.find(row=>drafts.get(row.id)?.result==='FAIL'&&!drafts.get(row.id)?.reason.trim());
     if (invalid) return toast(`Enter the fail reason for ${invalid.name}.`);
+    const missingResult=rows.find(row=>!draftFiles.has(row.id));
+    if(missingResult)return toast(`Upload the trial result file for ${missingResult.name}.`);
+    const missingVideo=rows.find(row=>!draftVideos.has(row.id));
+    if(missingVideo)return toast(`Upload the driving video for ${missingVideo.name}.`);
+    if(!trainerName)return toast('Assign a Driver Trainer in the active site hierarchy before submitting.');
     const ids=new Set(rows.map(row=>row.id)), at=new Date().toISOString(), changed: Trial[]=[];
     const files = new Map(rows.flatMap(row=>{
       const file = draftFiles.get(row.id);
@@ -695,7 +701,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (!row) return;
     const draft=draftFor(row);
     if (field==='post') draft.post=post(input.value);
-    else if(field==='machine'||field==='reason'||field==='trainer'||field==='remarks') draft[field]=input.value;
+    else if(field==='machine'||field==='reason'||field==='remarks') draft[field]=input.value;
   };
   $('#trList').onchange=event=>{
     const input=event.target as HTMLInputElement;
@@ -1002,5 +1008,11 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (photoUrl) URL.revokeObjectURL(photoUrl);
     root.replaceChildren();
   }
-  return {dispose, fillAadhaarDetails, setAadhaarBusy,setDrivingLicenceBusy,setDrivingLicenceReady,fillDrivingLicenceDetails};
+  function setTrainer(name:string,reason=''){
+    trainerName=name.trim();
+    for(const draft of drafts.values())draft.trainer=trainerName;
+    if(tab==='trainer')renderTrainer();
+    if(!trainerName&&reason)toast(reason);
+  }
+  return {dispose, fillAadhaarDetails, setAadhaarBusy,setDrivingLicenceBusy,setDrivingLicenceReady,fillDrivingLicenceDetails,setTrainer};
 }
