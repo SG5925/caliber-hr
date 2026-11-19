@@ -9,6 +9,7 @@ import './trial-form.css';
 import {prepareTrialJoining,saveTrialHandoff,type TrialHandoff} from './trialHandoff';
 import type {JoiningDraft} from './joiningDrafts';
 import type {Trial} from './trial-workflow-preview/records';
+import {departmentStructure} from './joiningDepartments';
 
 const TrialWorkflowPreview=lazy(()=>import('./trial-workflow-preview/TrialWorkflowPreview'));
 
@@ -24,6 +25,8 @@ function writeTrialDrafts(list:TrialDraft[]){try{localStorage.setItem(DRAFTS_KEY
 export function upsertTrialDraft(draft:TrialDraft){writeTrialDrafts([draft,...listTrialDrafts().filter(d=>d.formNo!==draft.formNo)]);}
 export function removeTrialDrafts(formNos:string[]){writeTrialDrafts(listTrialDrafts().filter(d=>!formNos.includes(d.formNo)));}
 const companyShort:Record<string,string>={'Caliber Mining And Logistics Ltd':'CMLL','Caliber Mining And Logistics Ltd SCR JV':'CMPL SCR JV','KSR FREIGHT CARRIERS':'KSR','CHADDA TRADING COMPANY':'CHADDA TRADING CO.'};
+const trialSites=['Sasti OB','Dhoptala OB','Majri OB','Gauri Pauni OB','Hindustan Lalpeth OC','Jayant OB East','Jayant OB West','Dudhichua OB East','Dudhichua OB West'];
+const trialDepartments=Object.keys(departmentStructure);
 export const emptySelection:TrialSelection={employeeGroup:'Corporate / HO',company:'',region:'',site:'',department:'',subdepartment:'',designation:''};
 export function loadSelection():TrialSelection{try{return {...emptySelection,...JSON.parse(localStorage.getItem(SELECTION_KEY)||sessionStorage.getItem(SELECTION_KEY)||'{}')};}catch{return emptySelection;}}
 export function saveSelection(selection:TrialSelection){try{localStorage.setItem(SELECTION_KEY,JSON.stringify(selection));}catch{/* storage unavailable */}}
@@ -50,14 +53,17 @@ type TrialFormProps = {
 export default function TrialForm({selection,onPassed,owner: draftOwner,legacyOwner}: TrialFormProps) {
  const profile = savedSession()?.profile;
  const owner=draftOwner??(profile?.actor||profile?.username||profile?.email||'local');
- const {company, site, department, region, employeeGroup} = selection;
+ const [scope,setScope]=useState(selection);
+ useEffect(()=>setScope(selection),[selection]);
+ const {company, site, department, region, employeeGroup} = scope;
+ const update=(change:Partial<TrialSelection>)=>{const next={...scope,...change};setScope(next);saveSelection(next);};
  async function join(rows: Trial[]) {
-  const draft=await prepareTrialJoining(rows,selection,owner);
+  const draft=await prepareTrialJoining(rows,scope,owner);
   if (!draft?.trialHandoff) return;
   saveTrialHandoff(draft.trialHandoff,{});
   return ()=>onPassed?.(draft);
  }
- return <Suspense fallback={<p role="status">Loading Trial Form…</p>}><TrialWorkflowPreview owner={owner} legacyOwner={legacyOwner} name="" site={site} region={region} group={employeeGroup} company={companyShort[company]||company} department={department} onCleared={onPassed?join:undefined}/></Suspense>;
+ return <><section className="trial-scope" aria-label="Trial Form selection"><h1>Employee Master</h1><div className="trial-scope-groups" aria-label="Employee group"><button type="button" className={employeeGroup==='Corporate / HO'?'selected':''} onClick={()=>update({employeeGroup:'Corporate / HO',site:'',region:''})}>Corporate / HO</button><button type="button" className={employeeGroup==='OB / COAL'?'selected':''} onClick={()=>update({employeeGroup:'OB / COAL'})}>OB / COAL</button></div><div className="trial-scope-filters"><label>Site<select aria-label="Trial site" value={site} onChange={event=>update({site:event.target.value,region:/^(Jayant|Dudhichua)/.test(event.target.value)?'NCL':event.target.value?'WCL':''})}><option value="">Select site</option>{trialSites.map(value=><option key={value}>{value}</option>)}</select></label><label>Department<select aria-label="Trial department" value={department} onChange={event=>update({department:event.target.value,subdepartment:'',designation:''})}><option value="">Select department</option>{trialDepartments.map(value=><option key={value}>{value}</option>)}</select></label></div></section><Suspense fallback={<p role="status">Loading Trial Form…</p>}><TrialWorkflowPreview owner={owner} legacyOwner={legacyOwner} name="" site={site} region={region} group={employeeGroup} company={companyShort[company]||company} department={department} onCleared={onPassed?join:undefined}/></Suspense></>;
 }
 
 export function CurrentTrialForm({selection,onPassed,canManage=false}:{selection:TrialSelection;onPassed?:(handoff:TrialHandoff)=>void;canManage?:boolean}){

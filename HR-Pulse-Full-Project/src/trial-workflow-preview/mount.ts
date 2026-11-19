@@ -41,7 +41,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   const keyFor = (owner: string) => storagePrefix + JSON.stringify([owner,scope.company,scope.site]);
   const persistKey = keyFor(scope.owner);
   const legacyKey = scope.legacyOwner && scope.legacyOwner!==scope.owner ? keyFor(scope.legacyOwner) : undefined;
-  const site = scope.site || 'JAYANT OB EAST';
+  const site = scope.site;
   const defaults = () => post(scope.department);
   const drafts = new Map<string,Outcome>();
   const draftFiles = new Map<string,File>();
