@@ -235,6 +235,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     renderDrivingLicenceClasses([]);
     renderDrivingLicenceValidDates([]);
     $$<HTMLInputElement>('#single input[data-aadhaar-locked]').forEach(control => { control.readOnly = false; delete control.dataset.aadhaarLocked; control.title = ''; });
+    $$<HTMLInputElement>('#single input[data-driving-licence-locked]').forEach(control => { control.readOnly = false; delete control.dataset.drivingLicenceLocked; control.title = ''; });
     $('#photoBox').innerHTML = 'Upload photo<br><span class="muted">camera or gallery</span>';
     $('#f_vother').hidden = true;
     $<HTMLInputElement>('#f_trial').value = localDateTime();
@@ -266,12 +267,21 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     return $$<HTMLTableRowElement>('[data-dl-class-row]').map(row=>Object.fromEntries(dlClassFields.map(field=>[field,row.querySelector<HTMLInputElement>(`[data-dl-class="${field}"]`)?.value.trim()||''])) as DrivingLicenceClass).filter(row=>Object.values(row).some(Boolean));
   }
   function drivingLicenceValidDates(){return $$<HTMLInputElement>('[data-dl-valid]').map(input=>input.value).filter(Boolean);}
+  function lockDrivingLicenceScanned(control:HTMLInputElement){
+    if(!control.value)return;
+    control.readOnly=true;
+    control.dataset.drivingLicenceLocked='1';
+    control.title='Filled from the driving licence – cannot be edited';
+  }
   function fillDrivingLicenceDetails(details:DrivingLicenceDetails){
     if(!sameDocumentBirthDate(aadhaarBirthDate,details.dob)){drivingLicenceReady=false;updateSingleActions();throw new Error('Aadhaar and driving licence dates of birth do not match. Upload documents belonging to the same person.');}
-    $<HTMLInputElement>('#f_dl').value=details.licenceNumber;
+    const licenceNumber=$<HTMLInputElement>('#f_dl'),issueDate=$<HTMLInputElement>('#f_dlissue');
+    licenceNumber.readOnly=false;issueDate.readOnly=false;
+    licenceNumber.value=details.licenceNumber;
     renderDrivingLicenceClasses(details.classDetails);
-    $<HTMLInputElement>('#f_dlissue').value=details.issueDate;
+    issueDate.value=details.issueDate;
     renderDrivingLicenceValidDates(details.validUpto);
+    [licenceNumber,issueDate,...$$<HTMLInputElement>('[data-dl-class],[data-dl-valid]')].forEach(lockDrivingLicenceScanned);
     drivingLicenceReady=true;updateSingleActions();
   }
   /* Values read from the Aadhaar card are locked: HR cannot retype them, only a new scan can replace them. */
