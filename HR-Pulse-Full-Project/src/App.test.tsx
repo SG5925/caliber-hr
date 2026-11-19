@@ -117,8 +117,11 @@ it('shows employee and payroll submenus inside the sidebar',async()=>{
  expect(autoHide).toHaveAttribute('aria-checked','true');
  expect(document.querySelector('.app')).toHaveClass('auto-hide');
  const temperature=screen.getByRole('button',{name:'Toggle temperature unit'});
+ expect(temperature).toHaveTextContent('(28°C) 81.9°F');
  fireEvent.click(temperature);
- expect(temperature).toHaveTextContent('80.8°F');
+ expect(temperature).toHaveTextContent('(81.9°F) 28°C');
+ expect(screen.getByRole('button',{name:'Go back'})).toBeTruthy();
+ expect(document.querySelector('.day-scene')).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Notifications'}));
  expect(await screen.findByText('No new notifications.')).toBeTruthy();
  expect(within(sidebar).getByRole('button',{name:'Leave/OD Management'})).toBeTruthy();

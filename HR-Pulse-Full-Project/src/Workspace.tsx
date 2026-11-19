@@ -89,8 +89,8 @@ export default function Workspace({session,initialConfig,logout}:{session:Sessio
      </div>
      <HeaderClock/>
      <div className="header-utilities">
-      <button className="weather-chip" type="button" aria-label="Toggle temperature unit" onClick={()=>setCelsius(value=>!value)}><Thermometer/><span>{celsius?'27°C':'80.8°F'}</span><i>●</i></button>
-      <button className="day-toggle" type="button" aria-pressed={!dayMode} onClick={()=>setDayMode(value=>!value)}>{dayMode?<Sun/>:<Moon/>}<span>{dayMode?'Day':'Night'}</span></button>
+      <button className="weather-chip" type="button" aria-label="Toggle temperature unit" onClick={()=>setCelsius(value=>!value)}><Thermometer/><span>{celsius?'(28°C) 81.9°F':'(81.9°F) 28°C'}</span><i>●</i></button>
+      <button className="day-toggle" type="button" aria-pressed={!dayMode} onClick={()=>setDayMode(value=>!value)}><span className="day-scene" aria-hidden="true">{dayMode?<Sun/>:<Moon/>}<i/></span><span>{dayMode?'Day':'Night'}</span></button>
       <button type="button" aria-label="Search menus" onClick={()=>{setCollapsed(false);requestAnimationFrame(()=>navSearch.current?.focus());}}><Search/></button>
       <button type="button" aria-label="Open employee directory" onClick={()=>access.has('Employee Directory')?navigate('Employee Directory'):setNotice('Employee Directory access is not assigned.')}><Folder/></button>
       <button type="button" aria-label="Notifications" onClick={()=>setNotice('No new notifications.')}><Bell/></button>
