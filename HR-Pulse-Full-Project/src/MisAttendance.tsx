@@ -12,11 +12,12 @@ const columns = ['Date', 'Employee', 'Type', 'Equipment / vehicle', 'Time', 'Out
 const refreshMs = 30_000;
 const pageSize = 100;
 
-export default function MisAttendance({grant}: {grant: string}) {
+export default function MisAttendance({grant, shiftManagement=false}: {grant: string; shiftManagement?: boolean}) {
   const today = dateInIndia();
   const latest = today < startOfRecords ? startOfRecords : today;
   const [date, setDate] = useState(latest);
   const [site, setSite] = useState('');
+  const [shift, setShift] = useState('');
   const [search, setSearch] = useState('');
   const [pendingOnly, setPendingOnly] = useState(false);
   const [page, setPage] = useState(0);
@@ -98,7 +99,9 @@ export default function MisAttendance({grant}: {grant: string}) {
   const sites = [...new Set(all.map(row => row.site))];
   const activeSite = sites.includes(site) ? site : '';
   const needle = search.trim().toLowerCase();
-  const filtered = all.filter(row => (!activeSite || row.site === activeSite) &&
+  const shifts = [...new Set(all.filter(row => !activeSite || row.site === activeSite).map(row => row.shift))].sort();
+  const activeShift = shiftManagement && shifts.includes(shift) ? shift : '';
+  const filtered = all.filter(row => (!activeSite || row.site === activeSite) && (!activeShift || row.shift === activeShift) &&
     (!needle || [row.employeeName, row.employeeId, row.caliberCode].some(text => text?.toLowerCase().includes(needle))));
   const pending = filtered.filter(row => !row.verified).length;
   const rows = pendingOnly ? filtered.filter(row => !row.verified) : filtered;
@@ -111,7 +114,7 @@ export default function MisAttendance({grant}: {grant: string}) {
     <section className="data-card trip-attendance-card" aria-labelledby="trip-card-heading">
       <div className="trip-attendance-header">
         <div>
-          <h2 id="trip-card-heading">Trip cards &amp; driver logbooks</h2>
+          <h2 id="trip-card-heading">{shiftManagement ? 'Shift Management' : 'Trip cards & driver logbooks'}</h2>
           <p>Closed MIS batches verify attendance. Two verified back-to-back 8-hour shifts give 8 hours of OT.</p>
         </div>
         <button type="button" className="trip-attendance-refresh" disabled={loading || !valid} onClick={() => setRefresh(n => n + 1)}>
@@ -128,6 +131,7 @@ export default function MisAttendance({grant}: {grant: string}) {
           <option value="">All sites</option>
           {sites.map(name => <option key={name}>{name}</option>)}
         </select></label>
+        {shiftManagement && <label>Shift<select value={activeShift} onChange={e => {setShift(e.target.value); setPage(0); setEditing(undefined);}}><option value="">All shifts</option>{shifts.map(value => <option key={value}>{value}</option>)}</select></label>}
         <label>Employee<input type="search" value={search} placeholder="Search name or code" onChange={e => {setSearch(e.target.value); setPage(0);}}/></label>
         <label className="trip-attendance-checkbox"><input type="checkbox" checked={pendingOnly} onChange={e => {setPendingOnly(e.target.checked); setPage(0);}}/> Pending only</label>
       </div>

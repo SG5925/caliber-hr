@@ -1,7 +1,9 @@
 import {hrAsset,inPulseII} from './hr-paths';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Download,RefreshCw} from 'lucide-react';
-import {api,csv,download,type Lookup} from './api';
+import {api,csv,download,type Lookup,type Module} from './api';
+import PunctualitySummary from './PunctualitySummary';
+import ShiftMaster from './ShiftMaster';
 import MisAttendance from './MisAttendance';
 import './attendance.css';
 
@@ -35,14 +37,16 @@ export const employeeLabel=(punch:Pick<Punch,'employeeCode'|'employeeName'|'mach
 const POLL_MS=2000,MAX_POLLS=60;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 
-export default function AttendanceManagement({grant}:{grant:string}){
+export default function AttendanceManagement({grant,shiftModule}:{grant:string;shiftModule?:Module}){
  const today=indiaToday();
  const [from,setFrom]=useState(today),[to,setTo]=useState(today);
  const [status,setStatus]=useState<Status|null>(null),[punches,setPunches]=useState<PunchList|null>(null),[unlinked,setUnlinked]=useState<Unlinked[]>([]);
  const [lookups,setLookups]=useState<Lookup[]>([]),[choice,setChoice]=useState<Record<string,string>>({});
  const [loading,setLoading]=useState(true),[fetching,setFetching]=useState(false),[busy,setBusy]=useState(false);
  const [error,setError]=useState(''),[message,setMessage]=useState('');
- const [tab,setTab]=useState<'module'|'punches'|'mis'|'machines'>('module');
+ const [tab,setTab]=useState<'module'|'punches'|'mis'|'machines'|'late'|'shifts'>('module');
+ const [shiftView,setShiftView]=useState<'duties'|'settings'>('duties');
+ const [reportMonth,setReportMonth]=useState(today.slice(0,7));
  const [selected,setSelected]=useState('');
  const [adding,setAdding]=useState(false);
  const [site,setSite]=useState('');
@@ -51,7 +55,11 @@ export default function AttendanceManagement({grant}:{grant:string}){
  useEffect(()=>{live.current=true;return()=>{live.current=false;};},[]);
  useEffect(()=>{
   const openMis=(event:MessageEvent)=>{
-   if(event.origin===(inPulseII?'null':window.location.origin)&&event.source===attendanceFrame.current?.contentWindow&&event.data==='open-hr-mis-attendance')setTab('mis');
+   if(event.origin===(inPulseII?'null':window.location.origin)&&event.source===attendanceFrame.current?.contentWindow){
+    if(event.data==='open-hr-mis-attendance')setTab('mis');
+    if(event.data==='open-hr-shift-attendance')setTab('shifts');
+    if(event.data?.view==='hr-punctuality'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(event.data.month)){setReportMonth(event.data.month);setTab('late');}
+   }
   };
   window.addEventListener('message',openMis);
   return()=>window.removeEventListener('message',openMis);
@@ -129,11 +137,21 @@ export default function AttendanceManagement({grant}:{grant:string}){
   {status&&!status.configured&&<p className="help-text">The bridge key has not been added to the HR API settings yet, so attendance cannot be fetched.</p>}
   <div className="module-tabs" aria-label="Attendance views">
    <button className={tab==='module'?'selected':''} aria-pressed={tab==='module'} onClick={()=>setTab('module')}>Attendance module</button>
+   <button className={tab==='late'?'selected':''} aria-pressed={tab==='late'} onClick={()=>setTab('late')}>Late Come / Early Going</button>
+   <button className={tab==='shifts'?'selected':''} aria-pressed={tab==='shifts'} onClick={()=>setTab('shifts')}>Shift Management</button>
    <button className={tab==='punches'?'selected':''} aria-pressed={tab==='punches'} onClick={()=>setTab('punches')}>Machine punches</button>
    <button className={tab==='mis'?'selected':''} aria-pressed={tab==='mis'} onClick={()=>setTab('mis')}>Trip Cards &amp; Logbook</button>
    <button className={tab==='machines'?'selected':''} aria-pressed={tab==='machines'} onClick={()=>setTab('machines')}>Biometric machines</button>
   </div>
-  {tab==='module'&&<iframe ref={attendanceFrame} src={hrAsset("attendance-module.html")} sandbox={inPulseII ? "allow-scripts allow-downloads" : undefined} title="Attendance Management module"/>}
+  {tab==='late'&&<PunctualitySummary grant={grant} initialMonth={reportMonth}/>}
+  {tab==='shifts'&&<>
+   {shiftModule&&<div className="module-tabs" aria-label="Shift views">
+    <button aria-pressed={shiftView==='duties'} className={shiftView==='duties'?'selected':''} onClick={()=>setShiftView('duties')}>Shift attendance</button>
+    <button aria-pressed={shiftView==='settings'} className={shiftView==='settings'?'selected':''} onClick={()=>setShiftView('settings')}>Shift settings</button>
+   </div>}
+   {shiftView==='settings'&&shiftModule?<ShiftMaster grant={grant} module={shiftModule}/>:<MisAttendance grant={grant} shiftManagement/>}
+  </>}
+  <iframe style={tab==='module'?undefined:{display:'none'}} ref={attendanceFrame} src={hrAsset("attendance-module.html")} sandbox={inPulseII ? "allow-scripts allow-downloads" : undefined} title="Attendance Management module"/>
   {tab==='mis'&&<MisAttendance grant={grant}/>}
   {tab==='punches'&&<>
 
