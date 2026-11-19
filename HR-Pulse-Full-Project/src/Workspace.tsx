@@ -8,8 +8,8 @@ import TrialForm,{loadSelection,saveSelection,showsTrialForm,type TrialSelection
 import LeaveMaster,{LeaveRequests} from './LeaveMaster';
 import ShiftMaster from './ShiftMaster';
 import AttendanceManagement from './AttendanceManagement';
-import {useEffect,useState} from 'react';
-import {Banknote,Boxes,CalendarDays,ChevronDown,FileBarChart,LayoutDashboard,LogOut,Menu,Settings,ShieldCheck,UserPlus,Users,X} from 'lucide-react';
+import {useEffect,useRef,useState} from 'react';
+import {ArrowLeft,Banknote,Bell,Boxes,CalendarDays,ChevronDown,FileBarChart,Folder,LayoutDashboard,LogOut,Menu,Moon,PanelLeftClose,Search,Settings,ShieldCheck,Sun,Thermometer,UserPlus,Users,X} from 'lucide-react';
 import {api,savedSession,type Session,type HRConfig} from './api';
 import Logo from './Logo';
 import {Records,Approvals,Overview,Audit,AccessAdministration} from './Modules';
@@ -27,7 +27,9 @@ function HeaderClock(){
   return <div className="header-clock" aria-label={`${time}, ${date}`}><strong>{time}</strong><CalendarDays/><span>{date}</span></div>;
 }
 export default function Workspace({session,initialConfig,logout}:{session:Session;initialConfig:HRConfig;logout:()=>void}){
-  const[config,setConfig]=useState(initialConfig.modules),[profile,setProfile]=useState(initialConfig.profile),[page,setPage]=useState(()=>decodeURIComponent(window.location.hash.slice(1))),[kind,setKind]=useState('companies'),[group,setGroup]=useState(0),[error,setError]=useState(''),[collapsed,setCollapsed]=useState(true),[notice,setNotice]=useState('');
+  const[config,setConfig]=useState(initialConfig.modules),[profile,setProfile]=useState(initialConfig.profile),[page,setPage]=useState(()=>decodeURIComponent(window.location.hash.slice(1))),[kind,setKind]=useState('companies'),[group,setGroup]=useState(0),[error,setError]=useState(''),[collapsed,setCollapsed]=useState(()=>window.innerWidth<=760),[notice,setNotice]=useState('');
+  const[autoHide,setAutoHide]=useState(false),[navQuery,setNavQuery]=useState(''),[dayMode,setDayMode]=useState(true),[celsius,setCelsius]=useState(true);
+  const navSearch=useRef<HTMLInputElement>(null);
   const[masterMenu,setMasterMenu]=useState('Shift Master');
   const[expandedMenu,setExpandedMenu]=useState(()=>decodeURIComponent(window.location.hash.slice(1))||'Employee Master');
   const[employeeMenu,setEmployeeMenuState]=useState(()=>{try{return localStorage.getItem('hrPulse.employeeMenu')||'Employee Management';}catch{return 'Employee Management';}});
@@ -52,13 +54,47 @@ export default function Workspace({session,initialConfig,logout}:{session:Sessio
   useEffect(()=>{const timer=setInterval(()=>void refreshConfig(),60000);return()=>clearInterval(timer);},[session.grant]);
   useEffect(()=>{if(!notice)return;const timer=setTimeout(()=>setNotice(''),5000);return()=>clearTimeout(timer);},[notice]);
   useEffect(()=>{const change=()=>{try{setPage(decodeURIComponent(window.location.hash.slice(1)));}catch{setPage('');}};window.addEventListener('hashchange',change);return()=>window.removeEventListener('hashchange',change);},[]);
+  useEffect(()=>{const shortcut=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();setCollapsed(false);requestAnimationFrame(()=>navSearch.current?.focus());}};window.addEventListener('keydown',shortcut);return()=>window.removeEventListener('keydown',shortcut);},[]);
   useEffect(()=>{if(permitted.length&&!permitted.some(([name])=>name===page)){const isLegacyMaster=['Shift Management','Holiday & Leave'].includes(page)&&access.has('Master Configuration');if(isLegacyMaster)setMasterMenu(page==='Holiday & Leave'?'Holiday & Leave Master':'Shift Master');const next=isLegacyMaster?'Master Configuration':permitted[0][0];window.location.hash=encodeURIComponent(next);setPage(next);}},[profile,page]);
   function navigate(name:string){window.location.hash=encodeURIComponent(name);setPage(name);setNotice('');if(window.innerWidth<=760)setCollapsed(true);if(name==='Master Configuration'){setGroup(0);setKind('companies');}if(name==='Holiday & Leave')setKind('leaveRequests');}
   const employeePage=['Employee Master','Employee Onboarding','Employee Directory'].includes(page);
   const activeKind=employeePage?'employees':kind;
   const groups=masterGroups[group].kinds.filter(k=>config[k]);
   const initials=profile.name?.split(' ').map(x=>x[0]).slice(0,2).join('')||'HR';
-  return <div className={'app '+(collapsed?'collapsed':'')}><aside><div className="side-head"><Logo/><button aria-label="Toggle navigation" onClick={()=>setCollapsed(!collapsed)}><Menu/></button></div><div className="workspace"><small>WORKSPACE</small><strong>Caliber HR</strong><span>Azure HR database</span></div><nav>{permitted.map(([name,Icon])=>{const children=name==='Employee Master'?[...(trialVisible?['Trial Form']:[]),'Employee Management','Leave/OD Management','Employee Transfer','Attendance Management']:name==='Payroll Management'?['Salary Scheme','Payroll Processing','Loan and Advances','Expense Claims']:name==='Master Configuration'?['Employee Master']:[];const selected=name==='Employee Master'?employeeMenu:name==='Master Configuration'?masterMenu:payrollMenu;return <div className="nav-entry" key={name}><button className={page===name?'active':''} title={name} aria-expanded={children.length?expandedMenu===name:undefined} aria-controls={children.length?`submenu-${name.replaceAll(' ','-')}`:undefined} onClick={()=>{if(children.length){setExpandedMenu(expandedMenu===name?'':name);setCollapsed(false);}navigate(name);}}><Icon/><span>{name}</span>{children.length>0&&<ChevronDown className={'chev '+(expandedMenu===name?'expanded':'')}/>}</button>{children.length>0&&expandedMenu===name&&<div id={`submenu-${name.replaceAll(' ','-')}`} className="master-subnav employee-subnav" aria-label={`${name} submenus`}>{children.map(item=><button key={item} className={page===name&&selected===item?'selected':''} aria-pressed={page===name&&selected===item} onClick={()=>{if(name==='Employee Master')setEmployeeMenu(item);else if(name==='Master Configuration')setMasterMenu(item);else setPayrollMenu(item);navigate(name);}}>{item}</button>)}</div>}</div>;})}</nav><div className="side-user"><div className="avatar">{initials}</div><div><strong>{profile.name}</strong><small>{profile.assignedRole}</small></div><button aria-label="Sign out" onClick={logout}><LogOut/></button></div></aside><main className="main"><header><button className="mobile-menu" aria-label="Open navigation" onClick={()=>setCollapsed(!collapsed)}><Menu/></button><strong>People & operations</strong><HeaderClock/><div className="header-actions"><div className="header-profile"><div className="avatar">{initials}</div><span><strong>{profile.name}</strong><small>{profile.assignedRole}</small></span></div><button aria-label="Sign out" onClick={logout}><LogOut/></button></div></header><div className="content">{page==='Master Configuration'&&<section className="master-configuration" aria-label="Master Configuration">
+  const childrenFor=(name:string)=>name==='Employee Master'?[...(trialVisible?['Trial Form']:[]),'Employee Management','Leave/OD Management','Employee Transfer','Attendance Management']:name==='Payroll Management'?['Salary Scheme','Payroll Processing','Loan and Advances','Expense Claims']:name==='Master Configuration'?['Employee Master']:[];
+  const query=navQuery.trim().toLowerCase(),visibleMenus=permitted.filter(([name])=>!query||name.toLowerCase().includes(query)||childrenFor(name).some(item=>item.toLowerCase().includes(query)));
+  const currentArea=page==='Employee Master'?employeeMenu:page||'Dashboard';
+  return <div className={'app '+(collapsed?'collapsed ':'')+(autoHide?'auto-hide ':'')+(dayMode?'':'night-mode')}>
+   <aside>
+    <div className="side-head"><Logo/><button aria-label="Toggle navigation" onClick={()=>setCollapsed(!collapsed)}><Menu/></button></div>
+    <div className="sidebar-tools" aria-label="Sidebar controls">
+     <div className="sidebar-tool-row">
+      <button type="button" onClick={()=>setCollapsed(true)}><PanelLeftClose/>Hide sidebar</button>
+      <button type="button" role="switch" aria-checked={autoHide} onClick={()=>setAutoHide(value=>{const next=!value;if(next)setCollapsed(true);return next;})}><span className={'sidebar-switch '+(autoHide?'on':'')}><i/></span>Auto-hide {autoHide?'On':'Off'}</button>
+     </div>
+     <label className="sidebar-search"><Search/><input ref={navSearch} value={navQuery} onChange={event=>setNavQuery(event.target.value)} placeholder="Smart search…" aria-label="Smart search navigation"/><kbd>Ctrl K</kbd></label>
+    </div>
+    <nav>{visibleMenus.map(([name,Icon])=>{const children=childrenFor(name),selected=name==='Employee Master'?employeeMenu:name==='Master Configuration'?masterMenu:payrollMenu,showChildren=children.length>0&&(expandedMenu===name||Boolean(query));return <div className="nav-entry" key={name}><button className={page===name?'active':''} title={name} aria-expanded={children.length?showChildren:undefined} aria-controls={children.length?`submenu-${name.replaceAll(' ','-')}`:undefined} onClick={()=>{if(children.length){setExpandedMenu(expandedMenu===name?'':name);setCollapsed(false);}navigate(name);}}><Icon/><span>{name}</span>{children.length>0&&<ChevronDown className={'chev '+(showChildren?'expanded':'')}/>}</button>{showChildren&&<div id={`submenu-${name.replaceAll(' ','-')}`} className="master-subnav employee-subnav" aria-label={`${name} submenus`}>{children.filter(item=>!query||item.toLowerCase().includes(query)||name.toLowerCase().includes(query)).map(item=><button key={item} className={page===name&&selected===item?'selected':''} aria-pressed={page===name&&selected===item} onClick={()=>{if(name==='Employee Master')setEmployeeMenu(item);else if(name==='Master Configuration')setMasterMenu(item);else setPayrollMenu(item);setNavQuery('');navigate(name);}}>{item}</button>)}</div>}</div>;})}{query&&!visibleMenus.length&&<p className="sidebar-no-results">No matching menu</p>}</nav>
+    <div className="side-user"><div className="avatar">{initials}</div><div><strong>{profile.name}</strong><small>{profile.assignedRole}</small></div><button aria-label="Sign out" onClick={logout}><LogOut/></button></div>
+   </aside>
+   <main className="main">
+    <header className="workspace-header">
+     <div className="header-left">
+      <button className="header-menu" aria-label={collapsed?'Show menu':'Hide menu'} onClick={()=>setCollapsed(!collapsed)}><Menu/><span>{collapsed?'Show menu':'Hide menu'}</span></button>
+      <button className="header-back" aria-label="Go back" onClick={()=>window.history.back()}><ArrowLeft/></button>
+      <div className="header-breadcrumbs"><span>Operations</span><ChevronDown/><strong>{currentArea}</strong></div>
+      <button className="header-signout" aria-label="Sign out" onClick={logout}><LogOut/><span>Sign out</span></button>
+     </div>
+     <HeaderClock/>
+     <div className="header-utilities">
+      <button className="weather-chip" type="button" aria-label="Toggle temperature unit" onClick={()=>setCelsius(value=>!value)}><Thermometer/><span>{celsius?'27°C':'80.8°F'}</span><i>●</i></button>
+      <button className="day-toggle" type="button" aria-pressed={!dayMode} onClick={()=>setDayMode(value=>!value)}>{dayMode?<Sun/>:<Moon/>}<span>{dayMode?'Day':'Night'}</span></button>
+      <button type="button" aria-label="Search menus" onClick={()=>{setCollapsed(false);requestAnimationFrame(()=>navSearch.current?.focus());}}><Search/></button>
+      <button type="button" aria-label="Open employee directory" onClick={()=>access.has('Employee Directory')?navigate('Employee Directory'):setNotice('Employee Directory access is not assigned.')}><Folder/></button>
+      <button type="button" aria-label="Notifications" onClick={()=>setNotice('No new notifications.')}><Bell/></button>
+     </div>
+    </header>
+    <div className="content">{page==='Master Configuration'&&<section className="master-configuration" aria-label="Master Configuration">
       <div className="module-tabs" aria-label="Master configuration menus">
         {['Shift Master','Holiday & Leave Master','Hierarchy','Employee Master'].map(item=><button type="button" key={item} className={masterMenu===item?'selected':''} aria-pressed={masterMenu===item} onClick={()=>setMasterMenu(item)}>{item}</button>)}
       </div>
