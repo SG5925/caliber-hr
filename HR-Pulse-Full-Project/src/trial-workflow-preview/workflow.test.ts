@@ -37,6 +37,12 @@ afterEach(()=>{
 });
 
 describe('Trial workflow preview',()=>{
+  it('requires the referrer and trial conductor',()=>{
+    const {el,click}=setup();
+    click('[data-tab="hr"]');
+    expect(el('#f_ref')).toBeRequired();
+    expect(el('#f_conducted')).toBeRequired();
+  });
   it('reloads a trainer saved in another tab without losing the candidate draft',async()=>{
     sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43)}));
     const request=vi.spyOn(window,'fetch').mockImplementation(async url=>Response.json(
