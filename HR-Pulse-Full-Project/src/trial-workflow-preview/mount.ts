@@ -13,7 +13,7 @@ import {findPreviousTrial} from './previousTrial';
 import type {TrialMatch} from '../TrialAadhaarHistory';
 
 type Tab = 'aadhaar' | 'hr' | 'trainer' | 'approve' | 'overview';
-type Scope = TrialScope & {owner: string; legacyOwner?: string; name: string};
+type Scope = TrialScope & {owner: string; legacyOwner?: string; name: string;designation?:string};
 export type PrepareJoining = (rows: Trial[]) => Promise<(() => void) | void>;
 const tabs: Tab[] = ['aadhaar','hr','trainer','approve','overview'];
 const roleTab: Record<Role,Tab> = {hr:'aadhaar',trainer:'trainer',pm:'approve',ohr:'approve',rhr:'approve',director:'approve'};
@@ -241,6 +241,13 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     $('#f_vother').hidden = true;
     $<HTMLInputElement>('#f_trial').value = localDateTime();
     $<HTMLInputElement>(`input[name="f_post"][value="${defaults()}"]`).checked = true;
+    const vehicle=({
+      'Loader Operator':'Loader','Dumper Operator':'Dumper/Tipper','Grader Operator':'Grader','Excavator Operator':'Excavator','Drill Operator':'Other',
+    } as Record<string,string>)[scope.designation||''];
+    if(vehicle){
+      const choice=$<HTMLInputElement>(`input[name="f_vehicle"][value="${vehicle}"]`);choice.checked=true;
+      if(vehicle==='Other'){$<HTMLInputElement>('#f_vother').hidden=false;$<HTMLInputElement>('#f_vother').value='Drill';}
+    }
     updateSingleActions();
   }
   function updateSingleActions() {

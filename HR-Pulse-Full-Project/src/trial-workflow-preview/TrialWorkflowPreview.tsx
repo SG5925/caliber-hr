@@ -7,8 +7,8 @@ import {mountTrialPreview,type PrepareJoining} from './mount';
 
 type Workflow = ReturnType<typeof mountTrialPreview>;
 
-export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region,group,company,department,onCleared}: {
-  owner: string; legacyOwner?: string; name: string; site: string; region: string; group: string; company: string; department: string; onCleared?: PrepareJoining;
+export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region,group,company,department,designation='',onCleared}: {
+  owner: string; legacyOwner?: string; name: string; site: string; region: string; group: string; company: string; department: string; designation?:string; onCleared?: PrepareJoining;
 }) {
   const host=useRef<HTMLDivElement>(null);
   const [workflow,setWorkflow] = useState<Workflow | null>(null);
@@ -21,7 +21,7 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
   useEffect(()=>{
     const node=host.current;
     if (!node) return;
-    const mounted = mountTrialPreview(node.shadowRoot||node.attachShadow({mode:'open'}),{owner,legacyOwner,name:signerName,site,region,group,company,department},{
+    const mounted = mountTrialPreview(node.shadowRoot||node.attachShadow({mode:'open'}),{owner,legacyOwner,name:signerName,site,region,group,company,department,designation},{
       reset: () => setUploadVersion(version => version + 1),
       setDisabled,
     },onCleared?async rows=>cleared.current?.(rows):undefined);
@@ -29,6 +29,14 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
     setWorkflow(mounted);
     return mounted.dispose;
   },[owner,legacyOwner,signerName,site,region,group,company,department]);
+  useEffect(()=>{
+    const preview=host.current?.shadowRoot;
+    if(!preview)return;
+    const vehicle=({'Loader Operator':'Loader','Dumper Operator':'Dumper/Tipper','Grader Operator':'Grader','Excavator Operator':'Excavator','Drill Operator':'Other'} as Record<string,string>)[designation];
+    preview.querySelectorAll<HTMLInputElement>('input[name="f_vehicle"]').forEach(input=>{input.checked=input.value===vehicle;});
+    const other=preview.querySelector<HTMLInputElement>('#f_vother');
+    if(other){other.hidden=vehicle!=='Other';other.value=vehicle==='Other'?'Drill':'';}
+  },[designation,workflow]);
   return <div ref={host} aria-label="Trial workflow local preview">
     {workflow && <div slot="aadhaar-upload" className="trial-document-uploads">
       <div className="trial-document-menu">
