@@ -423,6 +423,7 @@ describe('Employee Master tabs',()=>{
   fireEvent.change(screen.getByLabelText('Qualification 1'),{target:{value:'Other'}});
   expect((screen.getByLabelText('Qualification 1') as HTMLInputElement).placeholder).toBe('Enter qualification');
   await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Family Details/}));});
+  expect(screen.queryByLabelText('Marital Status')).toBeNull();
   expect(screen.getByLabelText('Family Member Name 1')).toBeTruthy();
   for(let row=1;row<=5;row++)expect(Array.from((screen.getByLabelText('Relationship '+row) as HTMLSelectElement).options,option=>option.text)).toEqual(['Select relationship','Mother','Father','Wife','Spouse','Son','Daughter']);
   fireEvent.change(screen.getByLabelText('Relationship 1'),{target:{value:'Mother'}});
@@ -444,9 +445,10 @@ describe('Employee Master tabs',()=>{
   expect(new FormData(joiningForm).get('Date of Birth 1')).toBe('');
   await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Previous Work Experience/}));});
   expect(screen.getByLabelText('Employer Name 1')).toBeTruthy();
+  expect((screen.getByLabelText('From Date 1') as HTMLInputElement).min).toBe('1000-01-01');
   for(let row=1;row<=5;row++)for(const label of ['From Date','To Date']){
    const input=screen.getByLabelText(label+' '+row) as HTMLInputElement;
-   expect(input.min).toBe('1000-01-01');expect(input.max).toBe('9999-12-31');
+   expect(input.max).toBe('9999-12-31');
    fireEvent.input(input,{target:{value:'20255-06-15'}});expect(input.value).toBe('2025-06-15');
    fireEvent.input(input,{target:{value:'2024-01-31'}});expect(input.value).toBe('2024-01-31');
   }
@@ -454,6 +456,12 @@ describe('Employee Master tabs',()=>{
   fireEvent.change(screen.getByLabelText('From Date 1'),{target:{value:'2020-01-15'}});
   fireEvent.change(screen.getByLabelText('To Date 1'),{target:{value:'2023-03-20'}});
   expect(screen.getByLabelText('Work Duration 1').textContent).toBe('3 years, 2 months, 5 days');
+  expect((screen.getByLabelText('To Date 1') as HTMLInputElement).min).toBe('2020-01-15');
+  expect((screen.getByLabelText('From Date 2') as HTMLInputElement).min).toBe('2023-03-21');
+  fireEvent.change(screen.getByLabelText('From Date 2'),{target:{value:'2023-03-20'}});
+  expect((screen.getByLabelText('From Date 2') as HTMLInputElement).validationMessage).toBe('The next From Date must be after the previous To Date.');
+  fireEvent.change(screen.getByLabelText('From Date 2'),{target:{value:'2023-03-21'}});
+  expect((screen.getByLabelText('From Date 2') as HTMLInputElement).validationMessage).toBe('');
   fireEvent.change(screen.getByLabelText('To Date 1'),{target:{value:'2019-01-15'}});
   expect(screen.getByLabelText('Work Duration 1').textContent).toBe('Check date range');
   fireEvent.change(screen.getByLabelText('To Date 1'),{target:{value:''}});
