@@ -1,7 +1,7 @@
 // Office field names used by the joining form after export aliases are applied.
 const requiredDetails = new Set([
   'Joining Category *','Employee Code','Full Name as per Aadhar','Full Name *','Father / Spouse Name *',
-  'Mobile *','Candidate E-mail *','Aadhaar No. *','PAN No.','Present Address','Reference Type','Reference Name',
+  'Identification mark','Mobile *','Candidate E-mail *','Aadhaar No. *','PAN No.','Present Address','Reference Type','Reference Name',
   'Emergency Contact Name','Emergency Contact Number','Department *','Sub-department *','Designation *',
   'Employee Category','Reporting To','Joining Date *','Shift *','Employment Type','Salary Type','Site / Project','PT State',
 ]);

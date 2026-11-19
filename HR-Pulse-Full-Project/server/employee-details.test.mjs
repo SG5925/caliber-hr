@@ -44,3 +44,11 @@ test('individual employee edits reject stale, inactive, out-of-scope and read-on
  await assert.rejects(service.updateEmployeeDetails(profile,employeeId,input),error=>error.status===409);
  assert.ok(!calls.some(call=>call.sql.startsWith('UPDATE')));
 });
+
+test('saved bank account cannot be replaced or cleared, but empty accounts can be entered',async()=>{
+ const {service,record}=fixture();
+ await service.updateEmployeeDetails(profile,employeeId,{version:4,officeData:{'Bank Account No':'00123456789'}});
+ record.data.officeData['Bank Account No']='00123456789';
+ for(const value of ['99999999999',''])await assert.rejects(service.updateEmployeeDetails(profile,employeeId,{version:4,officeData:{'Bank Account No':value}}),/account number is locked/);
+ await service.updateEmployeeDetails(profile,employeeId,{version:4,officeData:{'Bank Account No':'00123456789','Bank Name':'SBI'}});
+});

@@ -198,6 +198,9 @@ export function createService(pool,{telegram=createTelegramNotifier()}={}) {
         if(record.status!=='ACTIVE')throw problem('Only active employees can be edited here',409);
         if(record.version!==Number(version))throw problem('This employee changed. Reload the employee list before editing again.',409);
 
+        const savedAccount=String(record.data.officeData?.['Bank Account No']??'').trim();
+        if(savedAccount&&Object.hasOwn(officeData,'Bank Account No')&&officeData['Bank Account No'].trim()!==savedAccount)throw problem('Bank account number is locked after it is saved.');
+
         const coreChanges={};
         for(const [header,value] of changes){
           if(!Object.hasOwn(employeeDetailFields,header))continue;

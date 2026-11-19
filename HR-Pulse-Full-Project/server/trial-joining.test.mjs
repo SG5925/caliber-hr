@@ -10,7 +10,7 @@ const employee={code:'EMP-1',name:'Sample Candidate',joiningDate:'2026-11-12',ca
  __officeData:{
   'Joining Category *':'NCL','Employee Code':'EMP-1','Full Name as per Aadhar':'Sample Candidate','Full Name *':'Sample Candidate',
   'Father / Spouse Name *':'Sample Parent','Mobile *':'9876543210','Candidate E-mail *':'sample@example.test','Aadhaar No. *':trial.aadhaar,
-  'PAN No.':'ABCDE1234F','Present Address':'Sample Address','Reference Type':'Supervisor','Reference Name':'Sample Referrer',
+  'Identification mark':'Mole on left hand','PAN No.':'ABCDE1234F','Present Address':'Sample Address','Reference Type':'Supervisor','Reference Name':'Sample Referrer',
   'Emergency Contact Name':'Sample Contact','Emergency Contact Number':'9876543211','Department *':'Driver','Sub-department *':'Heavy Vehicles',
   'Designation *':'Tipper Driver','Employee Category':'Driver','Reporting To':'Site Manager','Joining Date *':'2026-11-12','Shift *':'General',
   'Employment Type':'Permanent','Salary Type':'HPC','Site / Project':'Jayant OB East','PT State':'Madhya Pradesh','Skill Category':'1341',

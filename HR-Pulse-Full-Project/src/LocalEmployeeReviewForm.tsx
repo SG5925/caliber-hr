@@ -45,7 +45,7 @@ export default function LocalEmployeeReviewForm({record,owner,onChange,readOnly=
   if(choices[label])return <select aria-label={accessible} disabled={readOnly||!editing} value={value} onChange={event=>change(event.target.value)}><option value="">Select</option>{value&&!choices[label].includes(value)&&<option>{value}</option>}{choices[label].map(option=><option key={option}>{option}</option>)}</select>;
   if(/address|reason|remarks/i.test(label))return <textarea aria-label={accessible} readOnly={readOnly||!editing} value={value} onChange={event=>change(event.target.value)}/>;
   const date=/Date|Valid Upto/.test(label)&&(!value||/^\d{4}-\d{2}-\d{2}$/.test(value));
-  return <FormInput birthDate={isBirthDateField(label)} showAge={section!=='Family Details'} aria-label={accessible} readOnly={readOnly||!editing} type={date?'date':'text'} min={date?'1000-01-01':undefined} max={date?'9999-12-31':undefined} value={value} onChange={event=>change(date?event.target.value.replace(/^(\d{4})\d+(?=-)/,'$1'):event.target.value)}/>;
+  return <FormInput birthDate={isBirthDateField(label)} showAge={section!=='Family Details'} aria-label={accessible} readOnly={readOnly||!editing||label==='Bank Account No'&&Boolean((savedForm.office[label]||'').trim())} type={date?'date':'text'} min={date?'1000-01-01':undefined} max={date?'9999-12-31':undefined} value={value} onChange={event=>change(date?event.target.value.replace(/^(\d{4})\d+(?=-)/,'$1'):event.target.value)}/>;
  }
  function save(event:FormEvent){event.preventDefault();if(!editing)return;setError('');
   const missing=Object.keys(form.office).find(label=>requiredEmployeeDetail(label)&&!form.office[label].trim()&&(initial.office[label]?.trim()||savedForm.office[label]?.trim()));
