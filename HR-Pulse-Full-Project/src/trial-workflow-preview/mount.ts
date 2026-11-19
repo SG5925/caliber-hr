@@ -1,7 +1,7 @@
 import template from './screen.html?raw';
 import css from './screen.css?raw';
 import {savedSession} from '../api';
-import {readGeminiAadhaar, type AadhaarDetails} from '../geminiOcr';
+import {readGeminiAadhaar, type AadhaarDetails,type DrivingLicenceDetails} from '../geminiOcr';
 import {applyBulkAadhaar, blankBulkRow, bulkColumns, bulkConfirmations, downloadBulkWorkbook, hasBulkCandidate, readBulkWorkbook} from './bulkCandidates';
 import {candidateProblem, canApprove, date, DOCS, equipment, indiaDay, indiaTime, isClearedForJoining, licenceDate, localDateTime,
   NEXT, nextNumber, post, resultMessage, ROLES, STAGES, VEHICLES, type Candidate, type Outcome, type Role, type Trial} from './records';
@@ -49,7 +49,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   const effects = new AbortController();
   let tab: Tab = 'aadhaar', role: Role = 'hr', stageFilter = '', records: Trial[] = [], bulk = Array.from({length:3},blankBulkRow);
   let photo = '', photoLoading = false, photoVersion = 0, photoUrl = '', detailId = '', toastTimer: ReturnType<typeof setTimeout>;
-  let aadhaarScanPending = false;
+  let aadhaarScanPending = false,drivingLicenceBusy=false,drivingLicenceReady=false;
   let aadhaarHistoryPending=false, aadhaarLookupVersion=0, checkedAadhaar='';
   let aadhaarHistoryFocus:HTMLElement|null=null;
   let bulkBusy = false;
@@ -227,6 +227,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     photo = '';
     photoLoading = false;
     aadhaarScanPending = false;
+    drivingLicenceBusy=false;drivingLicenceReady=false;
     resetAadhaarHistoryCheck();
     aadhaar.reset();
     $<HTMLFormElement>('#single').reset();
@@ -240,11 +241,18 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   function updateSingleActions() {
     const canEdit = role === 'hr';
     $<HTMLButtonElement>('#sSubmit').disabled = !canEdit || photoLoading || aadhaarScanPending || aadhaarHistoryPending;
-    $<HTMLButtonElement>('#aadhaarContinue').disabled = aadhaarScanPending || aadhaarHistoryPending;
+    $<HTMLButtonElement>('#aadhaarContinue').disabled = aadhaarScanPending || aadhaarHistoryPending || drivingLicenceBusy || !drivingLicenceReady;
   }
   function setAadhaarBusy(busy: boolean) {
     aadhaarScanPending = busy;
     updateSingleActions();
+  }
+  function setDrivingLicenceBusy(busy:boolean){drivingLicenceBusy=busy;updateSingleActions();}
+  function setDrivingLicenceReady(ready:boolean){drivingLicenceReady=ready;updateSingleActions();}
+  function fillDrivingLicenceDetails(details:DrivingLicenceDetails){
+    $<HTMLInputElement>('#f_dl').value=[details.licenceNumber,...details.classes].filter(Boolean).join(' – ');
+    $<HTMLInputElement>('#f_dlissue').value=details.issueDate;
+    $<HTMLInputElement>('#f_dlvalid').value=details.validUpto.join(', ');
   }
   /* Values read from the Aadhaar card are locked: HR cannot retype them, only a new scan can replace them. */
   function lockScanned(control: HTMLInputElement) {
@@ -380,7 +388,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (createCandidates([{
       name:value('#f_name'),father:value('#f_father'),dob:value('#f_dob'),mobile:value('#f_mobile'),aadhaar:digits(value('#f_aadhaar')),
       address:value('#f_address'),photo,post:post(value('input[name="f_post"]:checked')),vehicles,
-      otherVehicle:vehicles.includes('Other')?value('#f_vother'):'',dl:value('#f_dl'),dlValid:value('#f_dlvalid'),
+      otherVehicle:vehicles.includes('Other')?value('#f_vother'):'',dl:value('#f_dl'),dlIssue:value('#f_dlissue'),dlValid:value('#f_dlvalid'),
       experience:value('#f_exp'),employer:value('#f_prev'),trialDate:value('#f_trial'),referredBy:value('#f_ref'),
       docs:Object.fromEntries(DOCS.map(([key])=>[key,check(value('#d_'+key),value('#dr_'+key))])) as Candidate['docs'],
     }],false)) resetSingle();
@@ -926,5 +934,5 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (photoUrl) URL.revokeObjectURL(photoUrl);
     root.replaceChildren();
   }
-  return {dispose, fillAadhaarDetails, setAadhaarBusy};
+  return {dispose, fillAadhaarDetails, setAadhaarBusy,setDrivingLicenceBusy,setDrivingLicenceReady,fillDrivingLicenceDetails};
 }

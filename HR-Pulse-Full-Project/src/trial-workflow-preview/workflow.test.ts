@@ -44,7 +44,7 @@ describe('Trial workflow preview',()=>{
     const scan = vi.spyOn(window,'fetch')
       .mockResolvedValueOnce(Response.json({details}))
       .mockResolvedValueOnce(Response.json({matches:[]}))
-      .mockResolvedValueOnce(Response.json({error:'The card could not be read.'}, {status:422}));
+      .mockResolvedValueOnce(Response.json({details:{licenceNumber:'DL-123',classes:['HMV','LMV'],issueDate:'2020-01-02',validUpto:['2027-01-02','2030-01-02']}}));
     const {el,click,input,getByLabelText,getByRole,change} = setup();
     click('[data-tab="hr"]');
     input('#f_name','Verified Name');
@@ -62,6 +62,10 @@ describe('Trial workflow preview',()=>{
       method:'POST',
       headers:{Authorization:'Bearer '+grant,'Content-Type':'application/json'},
     }));
+    fireEvent.change(getByLabelText('Choose front driving licence image'),{target:{files:[file]}});
+    expect(el('#aadhaarContinue')).toBeDisabled();
+    fireEvent.change(getByLabelText('Choose back driving licence image'),{target:{files:[file]}});
+    await waitFor(()=>expect(el('#f_dl')).toHaveValue('DL-123 – HMV – LMV'));
     click('#aadhaarContinue');
     expect(el('#v-hr').hidden).toBe(false);
     expect(el('#v-aadhaar').hidden).toBe(true);
@@ -74,20 +78,17 @@ describe('Trial workflow preview',()=>{
     expect(el('#aadhaarHistory')).not.toBeVisible();
     expect(localStorage.length).toBe(0);
 
+    expect(el('#f_dl')).toHaveValue('DL-123 – HMV – LMV');
+    expect(el('#f_dlissue')).toHaveValue('2020-01-02');
+    expect(el('#f_dlvalid')).toHaveValue('2027-01-02, 2030-01-02');
     click('[data-tab="aadhaar"]');
-    fireEvent.change(getByLabelText('Choose Driving License'),{target:{files:[file]}});
-    expect(getByRole('status')).toHaveTextContent('Driving License uploaded.');
-    expect(getByLabelText('Uploaded Aadhaar image 1 PDF preview')).toBeInTheDocument();
-    expect(getByLabelText('Uploaded Driving License PDF preview')).toBeInTheDocument();
-    fireEvent.click(getByRole('button',{name:'Remove Driving License'}));
-    expect(getByRole('status')).toHaveTextContent('Driving License removed');
     expect(el('#f_aadhaar')).toHaveValue(details.uid);
     expect(el('#sSubmit')).toBeEnabled();
     click('#sReset');
-    expect(getByLabelText('Choose Driving License')).toBeEnabled();
+    expect(getByLabelText('Choose front driving licence image')).toBeEnabled();
     expect(getByRole('button',{name:'Upload Aadhar Image'})).toBeEnabled();
     change('#role','trainer');
-    expect(getByLabelText('Choose Driving License')).toBeDisabled();
+    expect(getByLabelText('Choose front driving licence image')).toBeDisabled();
   });
 
   it.each([
@@ -117,7 +118,7 @@ describe('Trial workflow preview',()=>{
     }));
     click('#aadhaarHistoryClose');
     expect(popup).not.toBeVisible();
-    expect(el('#aadhaarContinue')).toBeEnabled();
+    expect(el('#aadhaarContinue')).toBeDisabled();
   });
 
   it('finds a past pass saved for the same account at another site',async()=>{

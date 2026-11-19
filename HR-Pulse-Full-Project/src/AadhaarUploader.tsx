@@ -14,6 +14,7 @@ type Props = {
   showScanInstructions?: boolean;
   primaryButtonLabel?: string;
   secondaryDocumentLabel?: string;
+  hideSecond?: boolean;
 };
 
 const imageTypes = '.jpg,.jpeg,.png,image/jpeg,image/png';
@@ -31,7 +32,7 @@ function usePreview(file?: File) {
 
 export default function AadhaarUploader({
   photo, photo2, onPhoto, onPhoto2, fillDetails, disabled, onBusy, showScanInstructions = true,
-  primaryButtonLabel = 'Upload Aadhar Front Image', secondaryDocumentLabel,
+  primaryButtonLabel = 'Upload Aadhar Front Image', secondaryDocumentLabel, hideSecond = false,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [status, setStatus] = useState('');
@@ -101,10 +102,10 @@ export default function AadhaarUploader({
         <button disabled={locked} type="button" onClick={() => camera.current?.click()}><Camera/>Camera</button>
         <button disabled={locked} type="button" onClick={() => gallery.current?.click()}><Images/>Gallery / Document</button>
       </div>}
-      <button disabled={locked} type="button" className="employee-import" onClick={() => second.current?.click()}><Upload/>{secondaryDocumentLabel?`Upload ${secondaryDocumentLabel}`:'Upload Aadhar Back Image'}</button>
+      {!hideSecond&&<button disabled={locked} type="button" className="employee-import" onClick={() => second.current?.click()}><Upload/>{secondaryDocumentLabel?`Upload ${secondaryDocumentLabel}`:'Upload Aadhar Back Image'}</button>}
       <input disabled={locked} ref={camera} className="employee-import-input" aria-label="Capture Aadhaar card" type="file" accept={imageTypes} capture="environment" onChange={event => void select(event, 1)}/>
       <input disabled={locked} ref={gallery} className="employee-import-input" aria-label="Choose Aadhaar card from gallery" type="file" accept={documentTypes} onChange={event => void select(event, 1)}/>
-      <input disabled={locked} ref={second} className="employee-import-input" aria-label={secondaryDocumentLabel?`Choose ${secondaryDocumentLabel}`:'Choose second Aadhaar image'} type="file" accept={documentTypes} onChange={event => void select(event, 2)}/>
+      {!hideSecond&&<input disabled={locked} ref={second} className="employee-import-input" aria-label={secondaryDocumentLabel?`Choose ${secondaryDocumentLabel}`:'Choose second Aadhaar image'} type="file" accept={documentTypes} onChange={event => void select(event, 2)}/>}
     </div>
     {previews.map((preview, index) => preview && <div className="aadhaar-preview-row" key={index}>
       {files[index]?.type === 'application/pdf' || /\.pdf$/i.test(files[index]?.name || '')

@@ -14,7 +14,7 @@ type Attachment = {name: string; mime: string; data: string};
 const fields = (row: Trial): Record<string,string> => ({
   'Name of candidate': row.name, "Father's name": row.father, 'Date of birth / Age': row.dob, 'Mobile no.': row.mobile, 'Aadhaar no.': row.aadhaar,
   'Address': row.address, 'Post applied for': row.post, 'Vehicle / equipment for trial': equipment(row), 'Other equipment': '',
-  'Driving licence no. & class': row.dl, 'DL valid up to': row.dlValid, 'Total experience (years)': row.experience, 'Previous employer': row.employer,
+  'Driving licence no. & class': row.dl, 'DL issue date':row.dlIssue||'','DL valid up to': row.dlValid, 'Total experience (years)': row.experience, 'Previous employer': row.employer,
   'Trial date & time': row.trialDate, 'Referred by': row.referredBy,
   ...(row.outcome ? {'Result': row.outcome.result, 'If PASS – recommended for': row.outcome.result==='PASS' ? row.outcome.post : '', 'Machine': row.outcome.machine,
     'If FAIL – reason': row.outcome.reason, 'Examiner name': row.outcome.trainer, 'Trial conducted by': row.outcome.trainer, 'Examiner remarks': row.outcome.remarks} : {}),

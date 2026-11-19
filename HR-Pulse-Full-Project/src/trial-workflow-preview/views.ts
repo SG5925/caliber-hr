@@ -89,7 +89,7 @@ export function detailView(row: Trial, role: Role, canOpenJoining = false) {
     <div class="secbar">Part 1 – Candidate details <em>Site HR</em></div>
     <div class="grid-form"><div class="rows">${section([
       ["Father's name",row.father],['Date of birth',date(row.dob)],['Mobile no.',row.mobile],['Aadhaar no.',row.aadhaar],['Address',row.address],
-      ['Post applied for',row.post],['Vehicle / equipment',equipment(row)],['DL no. &amp; class',row.dl],['DL valid up to',date(row.dlValid)],
+      ['Post applied for',row.post],['Vehicle / equipment',equipment(row)],['DL no. &amp; class',row.dl],['DL issue date',date(row.dlIssue||'')],['DL valid up to',row.dlValid.split(',').map(value=>date(value.trim())).filter(Boolean).join(', ')],
       ['Experience',row.experience?row.experience+' years':''],['Previous employer',row.employer],['Trial date &amp; time',dateTime(row.trialDate)],['Referred by',row.referredBy],
     ])}</div><div class="photo">${photo}</div></div>
     <div class="secbar">Document check</div>

@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import AadhaarUploader from '../AadhaarUploader';
+import DrivingLicenceUploader from '../DrivingLicenceUploader';
 import {mountTrialPreview,type PrepareJoining} from './mount';
 
 type Workflow = ReturnType<typeof mountTrialPreview>;
@@ -28,7 +29,9 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
     {workflow && <div slot="aadhaar-upload">
       <AadhaarUploader key={uploadVersion} disabled={disabled} onBusy={workflow.setAadhaarBusy}
         fillDetails={workflow.fillAadhaarDetails} showScanInstructions={false}
-        primaryButtonLabel="Upload Aadhar Image" secondaryDocumentLabel="Driving License"/>
+        primaryButtonLabel="Upload Aadhar Image" hideSecond/>
+      <DrivingLicenceUploader key={'dl-'+uploadVersion} disabled={disabled} onBusy={workflow.setDrivingLicenceBusy}
+        onReady={workflow.setDrivingLicenceReady} onDetails={workflow.fillDrivingLicenceDetails}/>
     </div>}
   </div>;
 }
