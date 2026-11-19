@@ -11,6 +11,7 @@ import {deliveryStatus, fetchDecisions, sendApproval, sendPart1, sendResults, ty
 import {siteDisplayName} from '../siteNames';
 import {findPreviousTrial} from './previousTrial';
 import type {TrialMatch} from '../TrialAadhaarHistory';
+import {optimizeDrivingVideo} from './optimizeDrivingVideo';
 
 type Tab = 'aadhaar' | 'hr' | 'trainer' | 'approve' | 'overview';
 type Scope = TrialScope & {owner: string; legacyOwner?: string; name: string;designation?:string};
@@ -47,6 +48,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   const drafts = new Map<string,Outcome>();
   const draftFiles = new Map<string,File>();
   const draftVideos = new Map<string,File>();
+  const optimizingVideos = new Set<string>();
   const selected = new Set<string>();
   const effects = new AbortController();
   let tab: Tab = 'aadhaar', role: Role = 'hr', stageFilter = '', records: Trial[] = [], bulk = Array.from({length:3},blankBulkRow);
@@ -160,7 +162,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     const rows = waiting();
     const canEdit = role==='trainer' && !submittingResults;
     $('#trCount').textContent = rows.length ? `· ${rows.length} waiting` : '';
-    $('#trList').innerHTML = trainerForms(rows,draftFor,canEdit,draftFiles,draftVideos);
+    $('#trList').innerHTML = trainerForms(rows,draftFor,canEdit,draftFiles,draftVideos,optimizingVideos);
     $('#trRoleWarn').hidden = role==='trainer';
     $('#trSubmit').textContent = submittingResults ? 'Saving results…' : 'Submit results → send to PM';
     $<HTMLButtonElement>('#trSubmit').disabled = !canEdit||!rows.length;
@@ -590,6 +592,8 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (invalid) return toast(`Enter the fail reason for ${invalid.name}.`);
     const missingResult=rows.find(row=>!draftFiles.has(row.id));
     if(missingResult)return toast(`Upload the trial result file for ${missingResult.name}.`);
+    const optimizingVideo=rows.find(row=>optimizingVideos.has(row.id));
+    if(optimizingVideo)return toast(`Wait for the driving video optimization for ${optimizingVideo.name}.`);
     const missingVideo=rows.find(row=>!draftVideos.has(row.id));
     if(missingVideo)return toast(`Upload the driving video for ${missingVideo.name}.`);
     if(!trainerName)return toast('Assign a Driver Trainer in the active site hierarchy before submitting.');
@@ -704,7 +708,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (field==='post') draft.post=post(input.value);
     else if(field==='machine'||field==='reason'||field==='remarks') draft[field]=input.value;
   };
-  $('#trList').onchange=event=>{
+  $('#trList').onchange=async event=>{
     const input=event.target as HTMLInputElement;
     const isResult=input.hasAttribute('data-result-file'),isVideo=input.hasAttribute('data-driving-video');
     if (role!=='trainer'||submittingResults||!isResult&&!isVideo) return;
@@ -717,12 +721,24 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
       return;
     }
     if(isVideo){
-      if (!/\.(mp4|webm|mov)$/i.test(file.name) || (file.type && !['video/mp4','video/webm','video/quicktime'].includes(file.type))) {
-        toast('Choose an MP4, WebM or MOV driving video.');
+      if (!(file.type||'').startsWith('video/')&&!/\.(mp4|webm|mov|m4v|mkv|avi)$/i.test(file.name)) {
+        toast('Choose a video file.');
         return;
       }
-      if(file.size>3*1024*1024){toast('The driving video must be 3 MB or smaller.');return;}
-      draftVideos.set(row.id,file);
+      optimizingVideos.add(row.id);draftVideos.delete(row.id);renderTrainer();
+      toast(`Optimizing the driving video for ${row.name}…`);
+      try{
+        const optimized=await optimizeDrivingVideo(file,{signal:effects.signal});
+        if(effects.signal.aborted)return;
+        draftVideos.set(row.id,optimized.file);
+        toast(`Driving video optimized as ${optimized.format.label}.`);
+      }catch(error){
+        if(!effects.signal.aborted)toast(error instanceof Error?error.message:'Could not optimize the driving video.');
+      }finally{
+        optimizingVideos.delete(row.id);
+        if(!effects.signal.aborted){renderTrainer();focusResultUpload(row.id,'[data-choose-driving-video]');}
+      }
+      return;
     } else {
       if (!/\.(pdf|jpe?g|png)$/i.test(file.name) || (file.type && !['application/pdf','image/jpeg','image/png'].includes(file.type))) {
         toast('Choose a PDF, JPG or PNG trial result file.');

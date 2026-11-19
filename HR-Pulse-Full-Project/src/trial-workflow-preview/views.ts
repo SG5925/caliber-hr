@@ -15,7 +15,7 @@ export function overviewTable(records: Trial[], canOpenJoining = false) {
     <td>${esc(row.post)}</td><td>${esc(equipment(row))}</td><td>${esc(row.experience)}${row.experience?' yrs':''}</td>
     <td>${esc(row.referredBy)}</td><td>${esc(dateTime(row.trialDate))}</td><td>${resultPill(row)}</td><td>${stagePill(row)}${canOpenJoining&&isClearedForJoining(row)?` <button type="button" class="btn pri sm" data-join-trial="${esc(row.id)}" aria-label="Open Step 2 for ${esc(row.name)}">Open Step 2</button>`:''}</td></tr>`).join(''));
 }
-function resultFields(id: string, name: string, draft?: Outcome, allowed = false, file?: File, video?: File) {
+function resultFields(id: string, name: string, draft?: Outcome, allowed = false, file?: File, video?: File, optimizingVideo = false) {
   const prefix = name ? esc(name) + ': ' : '';
   const disabled = allowed ? '' : 'disabled';
   const passDisabled = allowed && draft?.result === 'PASS' ? '' : 'disabled';
@@ -33,11 +33,11 @@ function resultFields(id: string, name: string, draft?: Outcome, allowed = false
     ${row('Trial result files *', `
       <span class="trial-upload-actions">
         <button type="button" class="btn pri" data-choose-result-file aria-label="${prefix}${file?'Replace trial result file':'Upload trial result'}" ${disabled}>${file?'Replace file':'Upload trial result'}</button>
-        <button type="button" class="btn pri" data-choose-driving-video aria-label="${prefix}${video?'Replace driving video':'Upload Driving Video'}" ${disabled}>${video?'Replace video':'Upload Driving Video'}</button>
+        <button type="button" class="btn pri" data-choose-driving-video aria-label="${prefix}${video?'Replace driving video':'Upload Driving Video'}" ${allowed&&!optimizingVideo?'':'disabled'}>${optimizingVideo?'Optimizing video…':video?'Replace video':'Upload Driving Video'}</button>
       </span>
       <input type="file" data-result-file accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" ${disabled} hidden>
-      <input type="file" data-driving-video accept=".mp4,.webm,.mov,video/mp4,video/webm,video/quicktime" ${disabled} hidden>
-      <span class="note">Required · Result: PDF, JPG or PNG · Video: MP4, WebM or MOV (max 3 MB)</span>
+      <input type="file" data-driving-video accept="video/*,.mkv,.avi" ${allowed&&!optimizingVideo?'':'disabled'} hidden>
+      <span class="note">Required · Result: PDF, JPG or PNG · Video automatically optimized to 480p, 15 FPS (AV1 → VP9 → H.264)</span>
       ${file ? `<span class="trial-result-filename" role="status">${esc(file.name)}</span><button type="button" class="btn sm" data-remove-result-file ${disabled}>Remove file</button>` : ''}
       ${video ? `<span class="trial-result-filename" role="status">${esc(video.name)}</span><button type="button" class="btn sm" data-remove-driving-video ${disabled}>Remove video</button>` : ''}`)}
     ${row('Result', `<div class="pf">${resultButtons}</div>`)}
@@ -49,7 +49,7 @@ function resultFields(id: string, name: string, draft?: Outcome, allowed = false
     ${row('Examiner remarks', `<input type="text" data-f="remarks" aria-label="${prefix}Examiner remarks" value="${esc(draft?.remarks)}" ${disabled}>`)}
   </div>`;
 }
-export function trainerForms(records: Trial[], draftFor: (row: Trial) => Outcome, allowed: boolean, files: ReadonlyMap<string, File>, videos: ReadonlyMap<string, File>) {
+export function trainerForms(records: Trial[], draftFor: (row: Trial) => Outcome, allowed: boolean, files: ReadonlyMap<string, File>, videos: ReadonlyMap<string, File>, optimizingVideos:ReadonlySet<string>) {
   if (!records.length) {
     return `<p class="note trainer-empty">Submit a candidate in Part 1 to enable the trial result upload.</p>${resultFields('empty','')}`;
   }
@@ -62,7 +62,7 @@ export function trainerForms(records: Trial[], draftFor: (row: Trial) => Outcome
         <span class="small">${esc(equipment(row))} · ${esc(dateTime(row.trialDate))}${row.experience?' · '+esc(row.experience)+' yrs':''}</span>
         <span class="muted small">${checks.map(([label,check])=>label+(check.seen==='Yes'?' ✓':' –')).join(' · ')}</span>
       </div>
-      ${resultFields(row.id,row.name,draftFor(row),allowed,files.get(row.id),videos.get(row.id))}
+      ${resultFields(row.id,row.name,draftFor(row),allowed,files.get(row.id),videos.get(row.id),optimizingVideos.has(row.id))}
     </article>`;
   }).join('');
 }

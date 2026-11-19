@@ -7,6 +7,8 @@ import {sameDocumentBirthDate,type PrepareJoining} from './mount';
 import * as trialResultFiles from './trialResultFiles';
 import type {Trial} from './records';
 
+vi.mock('./optimizeDrivingVideo',()=>({optimizeDrivingVideo:vi.fn(async(file:File)=>({file,format:{label:'WebM/AV1'}}))}));
+
 const scope = {company:'CMLL',site:'Jayant OB East',region:'NCL',group:'OB / COAL',name:'Sample Signer',owner:'sample',department:'Driver'};
 const hierarchyTrainer={actor:'sajadali',name:'Sajad Ali',site:'Jayant OB East'};
 let dispose: (()=>void)|undefined;
@@ -296,7 +298,7 @@ describe('Trial workflow preview',()=>{
     expect(el('#toast')).toHaveTextContent('Upload the driving video for Sample Pass');
     fireEvent.change(el('[data-driving-video]'),{target:{files:[video]}});
     expect(el('#trList')).toHaveTextContent(file.name);
-    expect(el('#trList')).toHaveTextContent(video.name);
+    await waitFor(()=>expect(el('#trList')).toHaveTextContent(video.name));
     click('[aria-label="Sample Pass: Recommend Operator"]');
     input('[aria-label="Sample Pass: Machine"]','Sample excavator');
     input('[aria-label="Sample Pass: Examiner remarks"]','Completed the inspection');
@@ -378,6 +380,7 @@ describe('Trial workflow preview',()=>{
     fireEvent.change(batchCard.querySelector('[data-result-file]')!,{target:{files:[new File(['result'],'batch-result.pdf',{type:'application/pdf'})]}});
     const refreshedCard=el('[aria-label="Batch Candidate: Upload Driving Video"]').closest<HTMLElement>('[data-id]')!;
     fireEvent.change(refreshedCard.querySelector('[data-driving-video]')!,{target:{files:[new File(['video'],'batch-driving.mp4',{type:'video/mp4'})]}});
+    await waitFor(()=>expect(el('#trList')).toHaveTextContent('batch-driving.mp4'));
     click('#trSubmit');
     await waitFor(()=>expect(el('#bTrainer')).toHaveTextContent('1'));
     expect(el('#tgpop').hidden).toBe(true);
