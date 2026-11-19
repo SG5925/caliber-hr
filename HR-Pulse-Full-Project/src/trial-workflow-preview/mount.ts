@@ -24,8 +24,7 @@ const digits = (value: string) => value.replace(/\D/g,'');
 const sorted = (rows: Trial[]) => [...rows].sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
 const check = (seen = '', remarks = '') => ({seen,remarks});
 const empty = (title: string, message: string, action = '') => `<div class="empty"><b>${esc(title)}</b><span>${esc(message)}</span>${action}</div>`;
-const normalizedHolderName=(name:string)=>name.normalize('NFKD').replace(/[^a-z0-9 ]/gi,' ').replace(/\s+/g,' ').trim().toLowerCase();
-export const sameDocumentHolder=(aadhaarName:string,licenceName:string)=>Boolean(normalizedHolderName(aadhaarName)&&normalizedHolderName(aadhaarName)===normalizedHolderName(licenceName));
+export const sameDocumentBirthDate=(aadhaarDob:string,licenceDob:string)=>Boolean(aadhaarDob&&aadhaarDob===licenceDob);
 
 export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   reset: () => void;
@@ -51,7 +50,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   const effects = new AbortController();
   let tab: Tab = 'aadhaar', role: Role = 'hr', stageFilter = '', records: Trial[] = [], bulk = Array.from({length:3},blankBulkRow);
   let photo = '', photoLoading = false, photoVersion = 0, photoUrl = '', detailId = '', toastTimer: ReturnType<typeof setTimeout>;
-  let aadhaarScanPending = false,aadhaarHolderName='',drivingLicenceBusy=false,drivingLicenceReady=false;
+  let aadhaarScanPending = false,aadhaarBirthDate='',drivingLicenceBusy=false,drivingLicenceReady=false;
   let aadhaarHistoryPending=false, aadhaarLookupVersion=0, checkedAadhaar='';
   let aadhaarHistoryFocus:HTMLElement|null=null;
   let bulkBusy = false;
@@ -228,7 +227,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     photoUrl = '';
     photo = '';
     photoLoading = false;
-    aadhaarScanPending = false;aadhaarHolderName='';
+    aadhaarScanPending = false;aadhaarBirthDate='';
     drivingLicenceBusy=false;drivingLicenceReady=false;
     resetAadhaarHistoryCheck();
     aadhaar.reset();
@@ -268,7 +267,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   }
   function drivingLicenceValidDates(){return $$<HTMLInputElement>('[data-dl-valid]').map(input=>input.value).filter(Boolean);}
   function fillDrivingLicenceDetails(details:DrivingLicenceDetails){
-    if(!sameDocumentHolder(aadhaarHolderName,details.name)){drivingLicenceReady=false;updateSingleActions();throw new Error('Aadhaar and driving licence names do not match. Upload documents belonging to the same person.');}
+    if(!sameDocumentBirthDate(aadhaarBirthDate,details.dob)){drivingLicenceReady=false;updateSingleActions();throw new Error('Aadhaar and driving licence dates of birth do not match. Upload documents belonging to the same person.');}
     $<HTMLInputElement>('#f_dl').value=details.licenceNumber;
     renderDrivingLicenceClasses(details.classDetails);
     $<HTMLInputElement>('#f_dlissue').value=details.issueDate;
@@ -287,7 +286,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (details.uid && enteredNumber.length === 12 && enteredNumber !== details.uid) {
       return 'This card has a different Aadhaar number. Check the card and retry.';
     }
-    aadhaarHolderName=details.name;
+    aadhaarBirthDate=details.dob;
     const fields = [
       ['#f_name', details.name], ['#f_father', details.relationName], ['#f_dob', details.dob],
       ['#f_aadhaar', details.uid], ['#f_address', details.address],
