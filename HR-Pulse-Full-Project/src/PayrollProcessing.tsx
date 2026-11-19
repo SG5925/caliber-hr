@@ -63,8 +63,11 @@ function StatutoryEstimate({summary,structure,month,onEstimate}:{summary:Summary
 export default function PayrollProcessing({grant}:{grant:string}){
   const [employees,setEmployees]=useState<Employee[]>([]),[employee,setEmployee]=useState('');
   const [tab,setTab]=useState('structure');
-  const today=new Date();
-  const [month,setMonth]=useState(()=>today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0'));
+  const [payrollDate,setPayrollDate]=useState(()=>{
+    const today=new Date();
+    return [today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
+  });
+  const month=payrollDate.slice(0,7);
   const [error,setError]=useState(''),[loading,setLoading]=useState(true),[retry,setRetry]=useState(0);
   useEffect(()=>{
     let current=true;
@@ -74,11 +77,11 @@ export default function PayrollProcessing({grant}:{grant:string}){
     return ()=>{current=false;};
   },[grant,retry]);
   return <section className="data-card"><h2>Payroll Processing</h2>
-    <nav className="module-tabs" aria-label="Payroll workflows">{workflows.map(x=><button key={x.id} className={tab===x.id?'selected':''} aria-pressed={tab===x.id} onClick={()=>setTab(x.id)}>{x.name}</button>)}</nav>
+    <div className="payroll-workflows" role="group" aria-label="Payroll workflows">{workflows.map(x=><button type="button" key={x.id} aria-pressed={tab===x.id} onClick={()=>setTab(x.id)}>{x.name}</button>)}</div>
     {error&&<p role="alert" className="error">{error} <button onClick={()=>setRetry(retry+1)}>Retry</button></p>}
     {loading?<p role="status">Loading employees…</p>:!employees.length?<p>No employees available for payroll.</p>:<>
       <div className="record-form"><label>Employee<select value={employee} onChange={e=>setEmployee(e.target.value)}>{employees.map(e=><option key={e.id} value={e.id}>{e.code} · {e.name}</option>)}</select></label>
-      <label>Payroll month<input type="month" value={month} onChange={e=>setMonth(e.target.value)}/></label></div>
+      <label>Payroll date<input type="date" value={payrollDate} onChange={e=>setPayrollDate(e.target.value)}/></label></div>
       {month&&employee&&<EmployeePeriod key={grant+employee+month} grant={grant} employee={employee} month={month} tab={tab}/>}</>}
   </section>;
 }
