@@ -33,7 +33,7 @@ export default function Workspace({session,initialConfig,logout}:{session:Sessio
   const[masterMenu,setMasterMenu]=useState('Shift Master');
   const[expandedMenu,setExpandedMenu]=useState(()=>decodeURIComponent(window.location.hash.slice(1))||'Employee Master');
   const[employeeMenu,setEmployeeMenuState]=useState(()=>{try{return localStorage.getItem('hrPulse.employeeMenu')||'Employee Management';}catch{return 'Employee Management';}});
-  const setEmployeeMenu=(menu:string)=>{setEmployeeMenuState(menu);try{localStorage.setItem('hrPulse.employeeMenu',menu);}catch{/* ignore */}};
+  const setEmployeeMenu=(menu:string)=>{if(menu==='Corporate / HO'||menu==='OB / COAL'){const nextGroup=menu as 'Corporate / HO'|'OB / COAL';setEmployeeGroup(nextGroup);setSelection(current=>{const next={...current,employeeGroup:nextGroup,...(nextGroup==='Corporate / HO'?{site:'',region:''}:{})};saveSelection(next);return next;});return;}setEmployeeMenuState(menu);try{localStorage.setItem('hrPulse.employeeMenu',menu);}catch{/* ignore */}};
   const[transferTab,setTransferTab]=useState('requests');
   const[selection,setSelection]=useState<TrialSelection>(loadSelection),trialVisible=showsTrialForm(selection);
   useEffect(()=>{if(employeeMenu==='Trial Form'&&!trialVisible)setEmployeeMenu('Employee Management');},[trialVisible]);const updateSelection=(next:TrialSelection)=>{setSelection(next);saveSelection(next);};
@@ -61,7 +61,7 @@ export default function Workspace({session,initialConfig,logout}:{session:Sessio
   const activeKind=employeePage?'employees':kind;
   const groups=masterGroups[group].kinds.filter(k=>config[k]);
   const initials=profile.name?.split(' ').map(x=>x[0]).slice(0,2).join('')||'HR';
-  const childrenFor=(name:string)=>name==='Employee Master'?[...(trialVisible?['Trial Form']:[]),'Employee Management','Leave/OD Management','Employee Transfer','Attendance Management']:name==='Payroll Management'?['Salary Scheme','Payroll Processing','Loan and Advances','Expense Claims']:name==='Master Configuration'?['Employee Master']:[];
+  const childrenFor=(name:string)=>name==='Employee Master'?['Corporate / HO','OB / COAL',...(trialVisible?['Trial Form']:[]),'Employee Management','Leave/OD Management','Employee Transfer','Attendance Management']:name==='Payroll Management'?['Salary Scheme','Payroll Processing','Loan and Advances','Expense Claims']:name==='Master Configuration'?['Employee Master']:[];
   const query=navQuery.trim().toLowerCase(),visibleMenus=permitted.filter(([name])=>!query||name.toLowerCase().includes(query)||childrenFor(name).some(item=>item.toLowerCase().includes(query)));
   const currentArea=page==='Employee Master'?employeeMenu:page||'Dashboard';
   return <div className={'app '+(collapsed?'collapsed ':'')+(autoHide?'auto-hide ':'')+(dayMode?'':'night-mode')}>

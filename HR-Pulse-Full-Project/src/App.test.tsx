@@ -18,7 +18,7 @@ it('opens the full trial workflow directly from the Trial Form menu',async()=>{
  sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43),profile}));
  vi.stubGlobal('fetch',async()=>Response.json({profile,modules:{}}));
  const {container}=render(<App/>);
- fireEvent.click(await screen.findByRole('button',{name:'OB / COAL'}));
+ fireEvent.click((await screen.findAllByRole('button',{name:'OB / COAL'}))[0]);
  fireEvent.click(await screen.findByRole('button',{name:/^Trial Form$/}));
  await screen.findByRole('button',{name:'Upload Aadhar Front Image'});
  expect(screen.queryByRole('group',{name:'Trial Form views'})).toBeNull();
@@ -72,7 +72,7 @@ it('finds candidates saved under the original sign-in and current HR account key
  localStorage.setItem(key('other'),JSON.stringify([other]));
  const {container}=render(<App/>);
  await screen.findAllByText('Configured HR user');
- fireEvent.click(await screen.findByRole('button',{name:'OB / COAL'}));
+ fireEvent.click((await screen.findAllByRole('button',{name:'OB / COAL'}))[0]);
  fireEvent.click(await screen.findByRole('button',{name:'Trial Form'}));
  await screen.findByRole('button',{name:'Upload Aadhar Front Image'});
  const preview=container.querySelector('[aria-label="Trial workflow local preview"]')!.shadowRoot!;
