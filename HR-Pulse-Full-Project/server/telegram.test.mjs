@@ -162,7 +162,7 @@ test('trial approvals use the active Driver & Operator steps for the form group 
  for(const [stage,actor] of Object.entries({siteHr:'site',result:'pm1',part1:'dt',ohr:'office',rhr:'rhr',director:'dir'})){
   assert.deepEqual(await actors(stage),[actor]);
  }
- assert.deepEqual(await actors('all'),['site','pm1','dt','office','rhr','dir']);
+ assert.deepEqual(await actors('all'),['site','dt','pm1','office','rhr','dir']);
  assert.deepEqual(await actors('part1',{site:'NCL-JAYANT-W',group:'NCL'}),['westdt']);
  assert.deepEqual(await actors('part1',{site:'Gauri Pauni OB 2nd',region:'WCL'}),['wcldt']);
  assert.deepEqual(await actors('director',{site:'Nagpur CO',region:'Nagpur Corporate Office'}),['nagpurdir']);
