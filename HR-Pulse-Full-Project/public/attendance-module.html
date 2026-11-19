@@ -933,7 +933,7 @@ function renderPolicy(){
   else h=`<div class="policy mixed"><div><b>Mixed scope</b> — sites and offices are evaluated with their own policy. Pick a location to see one rule set.<div class="chips"><span class="chip">Sites: P · A · L · H · PH (1+1) · OT = double shift</span><span class="chip">Offices: P · WO · A · L · C-OFF · H · OD · no OT</span><span class="chip">Exempt everywhere: CMD/Directors, VP, CFO, CA, Drivers (logbook)</span></div></div></div>`;
   $('policy').innerHTML=h;
 }
-const TABS=[['exec','Executive View'],['dash','Dashboard'],['reg','Attendance Register'],['punch','ESSL Punch Log'],['trip','Trip Cards & Logbook'],['recon','Biometric vs Trip Card'],['exc','Verification'],['entry','Live Entry'],['ot','Overtime'],['leave','Leave Balance'],['np','Exempt Roles'],['appr','Approvals'],['close','Month Close'],['rules','Rules & Policy'],['tg','Telegram Bot']];
+const TABS=[['exec','Executive View'],['dash','Dashboard'],['late','Late Come / Early Going'],['shifts','Shift Management'],['reg','Attendance Register'],['punch','ESSL Punch Log'],['trip','Trip Cards & Logbook'],['recon','Biometric vs Trip Card'],['exc','Verification'],['entry','Live Entry'],['ot','Overtime'],['leave','Leave Balance'],['np','Exempt Roles'],['appr','Approvals'],['close','Month Close'],['rules','Rules & Policy'],['tg','Telegram Bot']];
 function counts(){
   const emps=scopeEmps(),n=elapsed(S.y,S.m);let mp=0,pv=0,ot=0;
   emps.forEach(e=>{for(let d=1;d<=n;d++){const r=evalDay(e,S.y,S.m,d);if(r.code==='MP'||r.code==='NV')mp++;if(r.code==='PV')pv++;if(r.otStatus==='pending')ot++}});
@@ -942,12 +942,18 @@ function counts(){
 function renderTabs(){
   const c=counts();
   $('bellN').textContent=R().director?REQS.filter(q=>q.status==='pending').length:c.mp+c.pv+c.ot;
-  $('tabs').innerHTML=TABS.filter(([k])=>R().tabs.includes(k)).map(([k,t])=>{let n='';if(k==='exc'&&c.mp)n=c.mp;if(k==='trip'&&c.pv)n=c.pv;if(k==='ot'&&c.ot&&mode()!=='office')n=c.ot;if(k==='appr'){const p=REQS.filter(q=>q.status==='pending'&&inScopeReq(q)).length;if(p)n=p}
+  $('tabs').innerHTML=TABS.filter(([k])=>['late','shifts'].includes(k)?window.parent!==window&&R().tabs.includes('dash'):R().tabs.includes(k)).map(([k,t])=>{let n='';if(k==='exc'&&c.mp)n=c.mp;if(k==='trip'&&c.pv)n=c.pv;if(k==='ot'&&c.ot&&mode()!=='office')n=c.ot;if(k==='appr'){const p=REQS.filter(q=>q.status==='pending'&&inScopeReq(q)).length;if(p)n=p}
     return`<button class="${S.tab===k?'on':''}" onclick="setTab('${k}')">${t}${n?`<span class="n">${n}</span>`:''}</button>`}).join('');
 }
 function render(){if(!R().tabs.includes(S.tab))S.tab=R().tabs[0];renderScope();renderPolicy();renderTabs();VIEWS[S.tab]();tgBadge();}
 function setScope(k,v){S[k]=v;if(k==='type'||k==='company'||k==='region')S.loc='ALL';if(k==='type'||k==='company')S.region='ALL';S.day=null;render()}
-function setTab(k){if(k==='trip'&&window.parent!==window){window.parent.postMessage('open-hr-mis-attendance',location.origin);return}S.tab=k;render()}
+function setTab(k){
+  if(k==='late'||k==='shifts'){
+    const message=k==='late'?{view:'hr-punctuality',month:S.y+'-'+pad(S.m+1)}:'open-hr-shift-attendance';
+    window.parent.postMessage(message,location.origin);
+    return;
+  }
+  if(k==='trip'&&window.parent!==window){window.parent.postMessage('open-hr-mis-attendance',location.origin);return}S.tab=k;render()}
 $('coSel').onchange=e=>setScope('company',e.target.value);
 $('monSel').onchange=e=>{const[y,m]=e.target.value.split('-').map(Number);S.y=y;S.m=m;S.day=null;render()};
 
