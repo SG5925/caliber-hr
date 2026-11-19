@@ -70,11 +70,19 @@ describe('Trial workflow preview',()=>{
       method:'POST',
       headers:{Authorization:'Bearer '+grant,'Content-Type':'application/json'},
     }));
+    fireEvent.click(getByRole('button',{name:'Upload Front Driving License Image'}));
+    expect(getByRole('button',{name:'Camera'})).toBeEnabled();
+    expect(getByRole('button',{name:'Gallery / Document'})).toBeEnabled();
+    expect(getByLabelText('Capture front driving licence image')).toHaveAttribute('capture','environment');
     const licenceImage=new File(['image-bytes'],'front.jpg',{type:'image/jpeg'});
     fireEvent.change(getByLabelText('Choose front driving licence image'),{target:{files:[licenceImage]}});
     await waitFor(()=>expect(document.querySelector('img[alt="Uploaded front driving licence preview"]')).toHaveAttribute('src',expect.stringMatching(/^blob:/)));
     expect(el('#aadhaarContinue')).toBeDisabled();
     fireEvent.change(getByLabelText('Choose front driving licence image'),{target:{files:[file]}});
+    fireEvent.click(getByRole('button',{name:'Upload Back Driving License Image'}));
+    expect(getByRole('button',{name:'Camera'})).toBeEnabled();
+    expect(getByRole('button',{name:'Gallery / Document'})).toBeEnabled();
+    expect(getByLabelText('Capture back driving licence image')).toHaveAttribute('capture','environment');
     fireEvent.change(getByLabelText('Choose back driving licence image'),{target:{files:[file]}});
     expect(getByLabelText('Uploaded front driving licence PDF preview')).toBeInTheDocument();
     expect(getByLabelText('Uploaded back driving licence PDF preview')).toBeInTheDocument();

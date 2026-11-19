@@ -1,20 +1,27 @@
-import {useEffect,useState,type ChangeEvent} from 'react';
-import {Trash2,Upload} from 'lucide-react';
+import {useEffect,useRef,useState,type ChangeEvent} from 'react';
+import {Camera,Images,Trash2,Upload} from 'lucide-react';
 import {savedSession} from './api';
 import {readGeminiDrivingLicence,type DrivingLicenceDetails} from './geminiOcr';
 
-const accept='.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf';
+const imageTypes='.jpg,.jpeg,.png,image/jpeg,image/png';
+const documentTypes='.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf';
 function usePreview(file?:File){const[url,setUrl]=useState('');useEffect(()=>{if(!file){setUrl('');return;}const next=URL.createObjectURL(file);setUrl(next);return()=>URL.revokeObjectURL(next);},[file]);return url;}
 export default function DrivingLicenceUploader({disabled,onBusy,onReady,onDetails}:{disabled?:boolean;onBusy:(busy:boolean)=>void;onReady:(ready:boolean)=>void;onDetails:(details:DrivingLicenceDetails)=>void}){
  const[front,setFront]=useState<File>();const[back,setBack]=useState<File>();const[status,setStatus]=useState('');const[busy,setBusy]=useState(false);
+ const[menuOpen,setMenuOpen]=useState<'front'|'back'>();
+ const frontCamera=useRef<HTMLInputElement>(null),frontGallery=useRef<HTMLInputElement>(null),backCamera=useRef<HTMLInputElement>(null),backGallery=useRef<HTMLInputElement>(null);
  const frontPreview=usePreview(front),backPreview=usePreview(back);
  const ready=Boolean(front&&back);
  useEffect(()=>onReady(ready),[ready,onReady]);
  useEffect(()=>{if(!front||!back)return;let active=true;setBusy(true);onBusy(true);setStatus('Reading both driving licence images with Gemini…');void(async()=>{try{const grant=savedSession()?.grant;if(!grant)throw new Error('Sign in again before scanning the driving licence.');const details=await readGeminiDrivingLicence([front,back],grant);if(active){onDetails(details);setStatus('Driving licence details filled automatically. Please verify all classes and validity dates.');}}catch(error){if(active)setStatus(error instanceof Error?error.message:'The driving licence could not be read.');}finally{if(active){setBusy(false);onBusy(false);}}})();return()=>{active=false;onBusy(false);};},[front,back,onBusy,onDetails]);
- const choose=(side:'front'|'back')=>(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];if(!file)return;(side==='front'?setFront:setBack)(file);};
+ const choose=(side:'front'|'back')=>(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value='';if(!file)return;(side==='front'?setFront:setBack)(file);setMenuOpen(undefined);};
  const locked=disabled||busy;
  return <section className="aadhaar-upload"><p>Upload both the front and back of the driving licence. Both images are required before continuing.</p><div className="aadhaar-upload-actions">
-  <label className="employee-import"><Upload/>Upload Front Driving License Image<input className="employee-import-input" disabled={locked} aria-label="Choose front driving licence image" type="file" accept={accept} onChange={choose('front')}/></label>
-  <label className="employee-import"><Upload/>Upload Back Driving License Image<input className="employee-import-input" disabled={locked} aria-label="Choose back driving licence image" type="file" accept={accept} onChange={choose('back')}/></label>
+  <div className="driving-licence-source"><button disabled={locked} type="button" className="employee-import" aria-expanded={menuOpen==='front'} onClick={()=>setMenuOpen(open=>open==='front'?undefined:'front')}><Upload/>Upload Front Driving License Image</button>{menuOpen==='front'&&<div className="aadhaar-source-menu"><button disabled={locked} type="button" onClick={()=>frontCamera.current?.click()}><Camera/>Camera</button><button disabled={locked} type="button" onClick={()=>frontGallery.current?.click()}><Images/>Gallery / Document</button></div>}</div>
+  <div className="driving-licence-source"><button disabled={locked} type="button" className="employee-import" aria-expanded={menuOpen==='back'} onClick={()=>setMenuOpen(open=>open==='back'?undefined:'back')}><Upload/>Upload Back Driving License Image</button>{menuOpen==='back'&&<div className="aadhaar-source-menu"><button disabled={locked} type="button" onClick={()=>backCamera.current?.click()}><Camera/>Camera</button><button disabled={locked} type="button" onClick={()=>backGallery.current?.click()}><Images/>Gallery / Document</button></div>}</div>
+  <input ref={frontCamera} className="employee-import-input" disabled={locked} aria-label="Capture front driving licence image" type="file" accept={imageTypes} capture="environment" onChange={choose('front')}/>
+  <input ref={frontGallery} className="employee-import-input" disabled={locked} aria-label="Choose front driving licence image" type="file" accept={documentTypes} onChange={choose('front')}/>
+  <input ref={backCamera} className="employee-import-input" disabled={locked} aria-label="Capture back driving licence image" type="file" accept={imageTypes} capture="environment" onChange={choose('back')}/>
+  <input ref={backGallery} className="employee-import-input" disabled={locked} aria-label="Choose back driving licence image" type="file" accept={documentTypes} onChange={choose('back')}/>
  </div>{front&&<div className="aadhaar-preview-row"><div><p className="aadhaar-status">Front: {front.name}</p>{front.type==='application/pdf'||/\.pdf$/i.test(front.name)?<object className="aadhaar-preview aadhaar-pdf-preview" data={frontPreview} type="application/pdf" aria-label="Uploaded front driving licence PDF preview"><span>{front.name}</span></object>:frontPreview&&<img className="aadhaar-preview" style={{display:'block',width:'min(420px,100%)',maxHeight:230,objectFit:'contain'}} src={frontPreview} alt="Uploaded front driving licence preview"/>}</div><button type="button" className="aadhaar-remove" disabled={locked} onClick={()=>setFront(undefined)}><Trash2/>Remove</button></div>}{back&&<div className="aadhaar-preview-row"><div><p className="aadhaar-status">Back: {back.name}</p>{back.type==='application/pdf'||/\.pdf$/i.test(back.name)?<object className="aadhaar-preview aadhaar-pdf-preview" data={backPreview} type="application/pdf" aria-label="Uploaded back driving licence PDF preview"><span>{back.name}</span></object>:backPreview&&<img className="aadhaar-preview" style={{display:'block',width:'min(420px,100%)',maxHeight:230,objectFit:'contain'}} src={backPreview} alt="Uploaded back driving licence preview"/>}</div><button type="button" className="aadhaar-remove" disabled={locked} onClick={()=>setBack(undefined)}><Trash2/>Remove</button></div>}{status&&<p className="aadhaar-status" role="status">{status}</p>}</section>;
 }
