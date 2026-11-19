@@ -6,7 +6,7 @@ import {Camera,Printer,Save,Send,X} from 'lucide-react';
 import {api,savedSession} from './api';
 import {AadhaarUpload} from './EmployeeLocation';
 import './trial-form.css';
-import {prepareTrialJoining,saveTrialHandoff,type TrialHandoff} from './trialHandoff';
+import {prepareTrialJoining,saveTrialHandoff,type TrialChecklistDocuments,type TrialHandoff} from './trialHandoff';
 import type {JoiningDraft} from './joiningDrafts';
 import type {Trial} from './trial-workflow-preview/records';
 import {departmentStructure} from './joiningDepartments';
@@ -80,8 +80,8 @@ export default function TrialForm({selection,onPassed,owner: draftOwner,legacyOw
  const departmentOptions=trialDepartments.includes(department)?departmentStructure[department]:undefined;
  const siteOptions=allowedSites;
  const update=(change:Partial<TrialSelection>)=>{const next={...scope,...change};setScope(next);saveSelection(next);};
- async function join(rows: Trial[]) {
-  const draft=await prepareTrialJoining(rows,scope,owner);
+ async function join(rows: Trial[],documents:TrialChecklistDocuments) {
+  const draft=await prepareTrialJoining(rows,scope,owner,documents);
   if (!draft?.trialHandoff) return;
   saveTrialHandoff(draft.trialHandoff,{});
   return ()=>onPassed?.(draft);

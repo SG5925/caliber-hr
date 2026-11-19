@@ -475,8 +475,10 @@ describe('Employee Master tabs',()=>{
   expect((screen.getByLabelText('Upload Candidate photo') as HTMLInputElement).required).toBe(true);
   expect((screen.getByLabelText('Upload Aadhaar (masked display)') as HTMLInputElement).required).toBe(true);
   expect((screen.getByLabelText('Upload PAN') as HTMLInputElement).required).toBe(false);
-  expect(screen.getAllByRole('button',{name:'Preview'}).every(button=>(button as HTMLButtonElement).disabled)).toBe(true);
-  expect(screen.getAllByRole('button',{name:'Remove'}).every(button=>(button as HTMLButtonElement).disabled)).toBe(true);
+  const fetchedAadhaar=screen.getByLabelText('Upload Aadhaar (masked display)') as HTMLInputElement;
+  expect(fetchedAadhaar.files?.[0]?.name).toBe('aadhaar.pdf');
+  expect(fetchedAadhaar.closest('tr')?.querySelector<HTMLButtonElement>('button.preview')).toBeEnabled();
+  expect(fetchedAadhaar.closest('tr')?.querySelector<HTMLButtonElement>('button.remove')).toBeEnabled();
   expect(screen.getByLabelText('Upload VTC certificate')).toBeTruthy();
   expect(screen.getByLabelText('Upload Medical fitness certificate')).toBeTruthy();
   expect((screen.getByLabelText('Upload VTC certificate') as HTMLInputElement).required).toBe(false);
@@ -485,7 +487,7 @@ describe('Employee Master tabs',()=>{
   expect(screen.getByRole('button',{name:'Bulk Upload'})).toBeTruthy();
   fireEvent.change(screen.getByLabelText('Bulk upload documents'),{target:{files:[new File(['a'],'offer.pdf',{type:'application/pdf'}),new File(['b'],'photo.png',{type:'image/png'})]}});
   expect(screen.getByText('Bulk uploaded documents (2)')).toBeTruthy();
-  fireEvent.click(screen.getAllByRole('button',{name:'Remove'}).filter(button=>!(button as HTMLButtonElement).disabled)[0]);
+  fireEvent.click(screen.getByText('offer.pdf').closest('tr')!.querySelector<HTMLButtonElement>('button.remove')!);
   expect(screen.getByText('Bulk uploaded documents (1)')).toBeTruthy();expect(screen.getByText('photo.png')).toBeTruthy();expect(screen.queryByText('offer.pdf')).toBeNull();
   expect(screen.getByLabelText('Upload Operator competency certificate')).toBeTruthy();
   view.rerender(<EmployeeLocation employeeGroup="Corporate / HO"/>);

@@ -5,17 +5,23 @@ import DrivingLicenceUploader from '../DrivingLicenceUploader';
 import {savedSession} from '../api';
 import {mountTrialPreview,type PrepareJoining} from './mount';
 import {fetchTrialTrainer} from './telegramSend';
+import type {TrialChecklistDocuments} from '../trialHandoff';
 
 type Workflow = ReturnType<typeof mountTrialPreview>;
 
 export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region,group,company,department,designation='',onCleared}: {
-  owner: string; legacyOwner?: string; name: string; site: string; region: string; group: string; company: string; department: string; designation?:string; onCleared?: PrepareJoining;
+  owner: string; legacyOwner?: string; name: string; site: string; region: string; group: string; company: string; department: string; designation?:string; onCleared?: (rows:Parameters<PrepareJoining>[0],documents:TrialChecklistDocuments)=>ReturnType<PrepareJoining>;
 }) {
   const host=useRef<HTMLDivElement>(null);
   const [workflow,setWorkflow] = useState<Workflow | null>(null);
   const [disabled,setDisabled] = useState(false);
   const [uploadVersion,setUploadVersion] = useState(0);
   const [uploadMenu,setUploadMenu] = useState<'root'|'aadhaar'|'front'|'back'>();
+  const [aadhaarFile,setAadhaarFile] = useState<File>();
+  const [licenceFront,setLicenceFront] = useState<File>();
+  const [licenceBack,setLicenceBack] = useState<File>();
+  const checklistDocuments=useRef<TrialChecklistDocuments>({});
+  checklistDocuments.current={aadhaar:aadhaarFile,drivingLicence:licenceFront};
   const signerName=name||savedSession()?.profile?.name||savedSession()?.profile?.username||'';
   const cleared=useRef(onCleared);
   cleared.current=onCleared;
@@ -23,9 +29,9 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
     const node=host.current;
     if (!node) return;
     const mounted = mountTrialPreview(node.shadowRoot||node.attachShadow({mode:'open'}),{owner,legacyOwner,name:signerName,site,region,group,company,department,designation},{
-      reset: () => setUploadVersion(version => version + 1),
+      reset: () => {setUploadVersion(version => version + 1);setAadhaarFile(undefined);setLicenceFront(undefined);setLicenceBack(undefined);},
       setDisabled,
-    },onCleared?async rows=>cleared.current?.(rows):undefined);
+    },onCleared?async rows=>cleared.current?.(rows,checklistDocuments.current):undefined);
     setDisabled(false);
     setWorkflow(mounted);
     let active=true;
@@ -61,10 +67,10 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
           <button type="button" onClick={()=>setUploadMenu('back')}>Upload Back Driving License Image</button>
         </div>}
       </div>
-      <AadhaarUploader key={uploadVersion} disabled={disabled} onBusy={workflow.setAadhaarBusy}
+      <AadhaarUploader key={uploadVersion} disabled={disabled} onBusy={workflow.setAadhaarBusy} photo={aadhaarFile} onPhoto={setAadhaarFile}
         fillDetails={workflow.fillAadhaarDetails} showScanInstructions={false}
         primaryButtonLabel="Upload Aadhar Image" hideSecond hidePrimary openMenu={uploadMenu==='aadhaar'} onMenuChange={open=>!open&&setUploadMenu(undefined)}/>
-      <DrivingLicenceUploader key={'dl-'+uploadVersion} disabled={disabled} onBusy={workflow.setDrivingLicenceBusy}
+      <DrivingLicenceUploader key={'dl-'+uploadVersion} disabled={disabled} onBusy={workflow.setDrivingLicenceBusy} onFront={setLicenceFront} onBack={setLicenceBack}
         onReady={workflow.setDrivingLicenceReady} onDetails={workflow.fillDrivingLicenceDetails} hideLaunchers openMenu={uploadMenu==='front'||uploadMenu==='back'?uploadMenu:undefined} onMenuChange={menu=>!menu&&setUploadMenu(undefined)}/>
     </div>}
   </div>;

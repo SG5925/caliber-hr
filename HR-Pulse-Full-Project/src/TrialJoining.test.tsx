@@ -13,7 +13,7 @@ it('opens a completed operator trial at step two and saves it on the sixth step 
   id,formNo:'TF/2026-27/0001',stage:'done',result:'PASS',site:'Jayant OB East',name:'Sample Candidate',
   father:'Sample Parent',dob:'2000-04-02',mobile:'9876543210',aadhaar:'',address:'Sample Address',
   dl:'DL123',dlValid:'2028-01-01',referredBy:'Sample Referrer',employer:'Sample Employer',
-  batch:'',createdAt:'2026-11-12',trialDate:'2026-11-12T10:00',photo:'',post:'Driver',experience:'',vehicles:['Excavator'],otherVehicle:'',
+  batch:'',createdAt:'2026-11-12',trialDate:'2026-11-12T10:00',photo:'data:image/jpeg;base64,cGhvdG8=',post:'Driver',experience:'',vehicles:['Excavator'],otherVehicle:'',
   docs:Object.fromEntries(DOCS.map(([key])=>[key,{seen:'',remarks:''}])) as Trial['docs'],
   outcome:{at:'2026-11-12',result:'PASS',post:'Operator',machine:'Excavator',reason:'',trainer:'Sample Trainer',remarks:''},
   history:[{role:'pm',by:'Sample PM',at:'2026-11-12',action:'Approved'},{role:'rhr',by:'Sample RHR',at:'2026-11-12',action:'Approved'},{role:'director',by:'Sample Director',at:'2026-11-12',action:'Approved'}],
@@ -23,9 +23,10 @@ it('opens a completed operator trial at step two and saves it on the sixth step 
  vi.spyOn(drafts,'saveJoiningDraft').mockImplementation(async draft=>{saved.set(draft.id,draft);});
  vi.spyOn(drafts,'removeJoiningDraft').mockImplementation(async key=>{saved.delete(key);});
  vi.spyOn(drafts,'saveEmployeeDocuments').mockResolvedValue(undefined);
+ const aadhaarFile=new File(['aadhaar'],'trial-aadhaar.jpg',{type:'image/jpeg'}),licenceFile=new File(['licence'],'trial-licence.jpg',{type:'image/jpeg'});
  const preparedDraft=await prepareTrialJoining([{...row,id:'failed',result:'FAIL'},row],{
   employeeGroup:'OB / COAL',company:'Caliber Mining And Logistics Ltd',region:'NCL',site:'Jayant OB East',department:'Driver',subdepartment:'Heavy Vehicles',designation:'Tipper Driver',
- },'site-hr');
+ },'site-hr',{aadhaar:aadhaarFile,drivingLicence:licenceFile});
  expect(saved.size).toBe(1);
  expect(preparedDraft?.step).toBe(1);
  saved.set(preparedDraft!.id,{...preparedDraft!,step:0});
@@ -44,9 +45,14 @@ it('opens a completed operator trial at step two and saves it on the sixth step 
  expect(screen.getByLabelText(/^Trial Form No\./)).toHaveValue(row.formNo);
  expect(screen.getByRole('heading',{name:'Joining & Personal Details',level:2})).toBeInTheDocument();
  expect(screen.queryByRole('heading',{name:'Upload Aadhaar Card'})).toBeNull();
+ await waitFor(()=>{
+  expect((screen.getByLabelText('Upload Candidate photo') as HTMLInputElement).files?.[0]?.name).toBe('trial-candidate.jpg');
+  expect((screen.getByLabelText('Upload Aadhaar (masked display)') as HTMLInputElement).files?.[0]).toBe(aadhaarFile);
+  expect((screen.getByLabelText('Upload Driving licence') as HTMLInputElement).files?.[0]).toBe(licenceFile);
+ });
  const form=container.querySelector<HTMLFormElement>('.joining-form')!;
  for(const control of form.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>('[required]')){
-  if(control.value||control.disabled)continue;
+  if(control.value||control.disabled||control instanceof HTMLInputElement&&control.type==='file'&&control.files?.length)continue;
   if(control instanceof HTMLSelectElement){if(control.options.length>1)fireEvent.change(control,{target:{value:control.options[1].value}});continue;}
   const name=control.name;
   if(control instanceof HTMLInputElement&&control.type==='file'){
@@ -69,6 +75,9 @@ it('opens a completed operator trial at step two and saves it on the sixth step 
   expect(screen.queryByRole('alert')?.textContent).toBeUndefined();
  }
  expect(screen.getByRole('heading',{name:'Document Checklist',level:2})).toBeInTheDocument();
+ expect((screen.getByLabelText('Upload Candidate photo') as HTMLInputElement).files?.[0]?.name).toBe('trial-candidate.jpg');
+ expect((screen.getByLabelText('Upload Aadhaar (masked display)') as HTMLInputElement).files?.[0]).toBe(aadhaarFile);
+ expect((screen.getByLabelText('Upload Driving licence') as HTMLInputElement).files?.[0]).toBe(licenceFile);
  await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Save Employee'}));});
  await waitFor(()=>{
   expect(screen.queryByRole('alert')?.textContent).toBeUndefined();

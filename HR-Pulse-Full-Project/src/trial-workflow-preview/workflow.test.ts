@@ -352,7 +352,7 @@ describe('Trial workflow preview',()=>{
       click('#apApprove');
     }
     expect(el('#tgpop').textContent).toContain('CLEARED TO JOIN');
-    expect(onCleared).toHaveBeenCalledWith([expect.objectContaining({stage:'done',result:'PASS',name:'Sample Pass'})]);
+    expect(onCleared).toHaveBeenCalledWith([expect.objectContaining({stage:'done',result:'PASS',name:'Sample Pass'})],expect.objectContaining({aadhaar:undefined,drivingLicence:undefined}));
     expect(openJoining).not.toHaveBeenCalled();
     expect(el('#tgClose2')).toHaveTextContent('Open Step 2');
     click('#tgClose2');
