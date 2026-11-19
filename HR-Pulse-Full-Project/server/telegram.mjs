@@ -366,7 +366,12 @@ export function createTelegram(pool){
   }
   if(route==='trial-trainer'&&method==='POST'){
    if(!grantedMenus(profile).has('Employee Master'))fail('Employee Master permission required',403);
-   return trialTrainerFor(pool,{site:String(input.site||'').slice(0,80),region:String(input.region||'').slice(0,80),company:String(input.company||'').slice(0,120),group:String(input.group||'').slice(0,80)});
+   const target={site:String(input.site||'').slice(0,80),region:String(input.region||'').slice(0,80),company:String(input.company||'').slice(0,120),group:String(input.group||'').slice(0,80)};
+   const trainer=await trialTrainerFor(pool,target),actor=norm(profile.actor),roles=[];
+   for(const [role,stage] of [['hr','siteHr'],['trainer','part1'],['pm','result'],['ohr','ohr'],['rhr','rhr'],['director','director']]){
+    if((await hierarchyRecipients(pool,stage,target)).some(recipient=>recipient.actor===actor))roles.push(role);
+   }
+   return {...trainer,roles};
   }
   if(route==='trial-history'&&method==='POST'){
    if(!grantedMenus(profile).has('Employee Master'))fail('Employee Master permission required',403);

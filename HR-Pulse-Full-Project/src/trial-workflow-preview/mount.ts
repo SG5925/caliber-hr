@@ -56,6 +56,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   let aadhaarHistoryPending=false, aadhaarLookupVersion=0, checkedAadhaar='';
   let aadhaarHistoryFocus:HTMLElement|null=null;
   let bulkBusy = false;
+  let roleLocked = false;
   let submittingResults = false;
   let modalFocus: HTMLElement | null = null;
   let telegramFocus: HTMLElement | null = null;
@@ -487,7 +488,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   }
   function setBulkBusy(busy: boolean) {
     bulkBusy = busy;
-    $<HTMLSelectElement>('#role').disabled = busy;
+    $<HTMLSelectElement>('#role').disabled = busy||roleLocked;
     updateBulkActions();
   }
   async function importBulkExcel(file: File) {
@@ -615,7 +616,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
         return;
       } finally {
         submittingResults = false;
-        $<HTMLSelectElement>('#role').disabled = false;
+        $<HTMLSelectElement>('#role').disabled = roleLocked;
         if (!effects.signal.aborted && tab==='trainer') renderTrainer();
       }
     }
@@ -1014,5 +1015,21 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if(tab==='trainer')renderTrainer();
     if(!trainerName&&reason)toast(reason);
   }
-  return {dispose, fillAadhaarDetails, setAadhaarBusy,setDrivingLicenceBusy,setDrivingLicenceReady,fillDrivingLicenceDetails,setTrainer};
+  function setRoles(assigned?:string[]){
+    if(!assigned)return;
+    const allowed=[...new Set(assigned.filter((item):item is Role=>Object.hasOwn(ROLES,item)))] as Role[];
+    const select=$<HTMLSelectElement>('#role');
+    for(const option of [...select.options])if(!allowed.includes(option.value as Role))option.remove();
+    if(!allowed.length){
+      select.add(new Option('No Trial Hierarchy role assigned',''));
+      select.value='';roleLocked=true;select.disabled=true;aadhaar.setDisabled(true);
+      $$<HTMLButtonElement>('#tabs button').forEach(button=>button.hidden=true);
+      tabs.forEach(item=>$('#v-'+item).hidden=true);
+      toast('Your Pulse ID is not assigned to this site in Trial Hierarchy.');
+      return;
+    }
+    role=allowed[0];select.value=role;roleLocked=allowed.length===1;select.disabled=roleLocked;
+    aadhaar.setDisabled(role!=='hr');tab=roleTab[role];selected.clear();refresh();
+  }
+  return {dispose, fillAadhaarDetails, setAadhaarBusy,setDrivingLicenceBusy,setDrivingLicenceReady,fillDrivingLicenceDetails,setTrainer,setRoles};
 }
