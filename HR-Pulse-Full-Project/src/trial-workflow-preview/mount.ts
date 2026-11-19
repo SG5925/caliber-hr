@@ -161,7 +161,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     $('#trList').innerHTML = trainerForms(rows,draftFor,canEdit,draftFiles,draftVideos);
     $('#trRoleWarn').hidden = role==='trainer';
     $('#trSubmit').textContent = submittingResults ? 'Saving results…' : 'Submit results → send to PM';
-    for (const selector of ['#trAllPass','#trSubmit']) $<HTMLButtonElement>(selector).disabled = !canEdit||!rows.length;
+    $<HTMLButtonElement>('#trSubmit').disabled = !canEdit||!rows.length;
   }
   function syncSelection(rows = approvals()) {
     const all = frame.querySelector<HTMLInputElement>('#apAll');
@@ -718,11 +718,6 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     }
     renderTrainer();
     focusResultUpload(row.id,isVideo?'[data-choose-driving-video]':'[data-choose-result-file]');
-  };
-  $('#trAllPass').onclick=()=>{
-    if(role!=='trainer'||submittingResults) return;
-    for(const row of waiting()){const draft=draftFor(row);if(!draft.result)draft.result='PASS';}
-    renderTrainer();
   };
   $('#trSubmit').onclick=()=>void submitResults();
 

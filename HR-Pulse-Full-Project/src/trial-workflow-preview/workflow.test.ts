@@ -268,7 +268,7 @@ describe('Trial workflow preview',()=>{
     fireEvent.change(el('[data-driving-video]'),{target:{files:[video]}});
     expect(el('#trList')).toHaveTextContent(file.name);
     expect(el('#trList')).toHaveTextContent(video.name);
-    click('#trAllPass');
+    click('[aria-label="Sample Pass: PASS"]');
     click('[aria-label="Sample Pass: Recommend Operator"]');
     input('[aria-label="Sample Pass: Machine"]','Sample excavator');
     input('[aria-label="Sample Pass: Trial conducted by"]','Sample Trainer');
@@ -342,6 +342,7 @@ describe('Trial workflow preview',()=>{
 
     change('#role','trainer');
     click('[aria-label="Batch Candidate: FAIL"]');
+    expect(el('[aria-label="Batch Candidate: Failure reason"]')).toBeRequired();
     click('#trSubmit');
     expect(el('#toast').textContent).toContain('Enter the fail reason');
     input('[aria-label="Batch Candidate: Failure reason"]','Did not complete trial safely');

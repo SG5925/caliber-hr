@@ -44,7 +44,7 @@ function resultFields(id: string, name: string, draft?: Outcome, allowed = false
     ${row('If PASS – recommended for', `
       <div class="recommended-post" role="group" aria-label="${prefix}Recommended post">${posts}</div>
       <label class="trainer-machine">Machine <input type="text" data-f="machine" aria-label="${prefix}Machine" value="${esc(draft?.machine)}" ${passDisabled}></label>`)}
-    ${row('If FAIL – reason', `<input type="text" data-f="reason" aria-label="${prefix}Failure reason" value="${esc(draft?.reason)}" ${failDisabled}>`)}
+    ${row(`If FAIL – reason${draft?.result==='FAIL'?' *':''}`, `<input type="text" data-f="reason" aria-label="${prefix}Failure reason" value="${esc(draft?.reason)}" ${draft?.result==='FAIL'?'required aria-required="true"':''} ${failDisabled}>`)}
     ${row('Trial conducted by', `<input type="text" data-f="trainer" aria-label="${prefix}Trial conducted by" value="${esc(draft?.trainer)}" placeholder="Your name if blank" ${disabled}>`)}
     ${row('Examiner remarks', `<input type="text" data-f="remarks" aria-label="${prefix}Examiner remarks" value="${esc(draft?.remarks)}" ${disabled}>`)}
   </div>`;
