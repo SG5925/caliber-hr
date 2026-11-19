@@ -16,7 +16,7 @@ it('opens the full trial workflow directly from the Trial Form menu',async()=>{
  const profile={name:'HR user',actor:'test',permissions:{application:'HR',hrDesktopAccess:['Employee Master']}};
  window.location.hash='Employee%20Master';
  sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43),profile}));
- vi.stubGlobal('fetch',async()=>Response.json({profile,modules:{}}));
+ vi.stubGlobal('fetch',async(url:string)=>Response.json(url.includes('/telegram/trial-access')?{role:'hr',name:'HR user',actor:'test',site:'Jayant OB East'}:{profile,modules:{}}));
  const {container}=render(<App/>);
  fireEvent.click((await screen.findAllByRole('button',{name:'OB / COAL'}))[0]);
  fireEvent.click(await screen.findByRole('button',{name:/^Trial Form$/}));
@@ -36,7 +36,9 @@ it('opens the full trial workflow directly from the Trial Form menu',async()=>{
  expect(screen.getByRole('button',{name:'Upload Back Driving License Image'})).toBeInTheDocument();
  expect(Array.from(preview?.querySelectorAll('#tabs button')??[],button=>button.getAttribute('data-tab')))
   .toEqual(['aadhaar','hr','trainer','approve','overview']);
- for(const tab of ['hr','trainer','approve','overview']){
+ expect(preview?.querySelector('[data-tab="trainer"]')).toHaveAttribute('hidden');
+ expect(preview?.querySelector('[data-tab="approve"]')).toHaveAttribute('hidden');
+ for(const tab of ['hr','overview']){
   fireEvent.click(preview!.querySelector(`[data-tab="${tab}"]`)!);
   expect(stages).not.toHaveAttribute('hidden');
  }

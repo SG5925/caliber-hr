@@ -8,6 +8,7 @@ import {equipment, type Trial} from './records';
 
 export type Delivery = {message: string; recipients: number; connected: string[]; bot?: string; configured?: boolean; issues?: string[]};
 export type TrialScope = {company: string; site: string; region: string; group: string; department: string};
+export type TrialAccess = {role:'hr'|'trainer'|'pm'|'ohr'|'rhr'|'director'|null;name:string;actor:string;site:string;reason?:string};
 const target = ({site, region, group, company}: TrialScope) => ({site, region, group, company});
 type Attachment = {name: string; mime: string; data: string};
 const dlClassDetails = (row: Trial) => (row.dlClasses||[]).map(item=>[
@@ -38,6 +39,10 @@ const fileAttachment = (file?: File) => new Promise<Attachment | null>(resolve =
   reader.readAsDataURL(file);
 });
 const grantOrThrow = () => {const grant = savedSession()?.grant; if (!grant) throw new Error('Sign in again to send on Telegram.'); return grant;};
+
+export async function fetchTrialAccess(scope:TrialScope):Promise<TrialAccess>{
+  return api<TrialAccess>(grantOrThrow(),'telegram/trial-access','POST',target(scope));
+}
 
 /* Human-readable delivery line for the popup. */
 export function deliveryStatus(d: Delivery, names: (key: string) => string = key => key) {

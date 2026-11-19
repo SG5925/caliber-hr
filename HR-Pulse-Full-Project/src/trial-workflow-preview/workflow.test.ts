@@ -39,9 +39,26 @@ describe('Trial workflow preview',()=>{
     expect(sameDocumentBirthDate('2000-01-02','2001-03-04')).toBe(false);
     expect(sameDocumentBirthDate('','2000-01-02')).toBe(false);
   });
+  it('shows and locks only the hierarchy role assigned to the signed-in user',async()=>{
+    const grant='a'.repeat(43),profile={actor:'ankittiwari',name:'Ankit Tiwari',permissions:{application:'HR'}};
+    sessionStorage.setItem('hrPulseSession',JSON.stringify({grant,profile}));
+    const request=vi.spyOn(window,'fetch').mockResolvedValue(Response.json({role:'hr',name:'Ankit Tiwari',actor:'ankittiwari',site:'Jayant OB East'}));
+    const {root,el,getByRole}=setup();
+    await waitFor(()=>expect(el<HTMLSelectElement>('#role')).toBeDisabled());
+    await waitFor(()=>expect(el<HTMLSelectElement>('#role')).toHaveValue('hr'));
+    expect([...el<HTMLSelectElement>('#role').options].map(option=>option.text)).toEqual(['HR Manager']);
+    expect(el<HTMLInputElement>('#myName')).toHaveValue('Ankit Tiwari');
+    expect(el<HTMLInputElement>('#myName')).toHaveAttribute('readonly');
+    expect(el<HTMLButtonElement>('[data-tab="trainer"]')).toHaveAttribute('hidden');
+    expect(el<HTMLButtonElement>('[data-tab="approve"]')).toHaveAttribute('hidden');
+    await waitFor(()=>expect(getByRole('button',{name:'Upload A/D'})).toBeEnabled());
+    expect(request).toHaveBeenCalledWith(expect.stringMatching(/\/telegram\/trial-access$/),expect.objectContaining({
+      method:'POST',body:JSON.stringify({site:scope.site,region:scope.region,group:scope.group,company:scope.company}),
+    }));
+    expect(root.querySelector('#v-aadhaar')).toBeVisible();
+  });
   it('scans Aadhaar with the signed-in session and fills only empty candidate fields',async()=>{
     const grant = 'a'.repeat(43);
-    sessionStorage.setItem('hrPulseSession', JSON.stringify({grant}));
     const details = {
       name:'Sample Candidate', relationName:'Sample Parent', dob:'2000-01-02',
       uid:'234500000000', address:'Sample Address', gender:'',
@@ -54,6 +71,7 @@ describe('Trial workflow preview',()=>{
         {code:'LMV',issuedBy:'MH29',dateOfIssue:'2020-02-03',vehicleCategory:'NT',badgeNumber:'',badgeIssuedDate:'',badgeIssuedBy:''},
       ],issueDate:'2020-01-02',validUpto:['2027-01-02','2030-01-02']}}));
     const {root,el,click,input,getByLabelText,getByRole,change} = setup();
+    sessionStorage.setItem('hrPulseSession', JSON.stringify({grant}));
     click('[data-tab="hr"]');
     input('#f_name','Verified Name');
     click('[data-tab="aadhaar"]');
@@ -125,12 +143,12 @@ describe('Trial workflow preview',()=>{
     {result:'FAIL',className:'p-fail',equipment:'Dozer',site:'Sasti OB',failureReason:'Unsafe handling'},
   ])('shows a $result popup immediately after uploading a matching Aadhaar',async match=>{
     const grant='a'.repeat(43);
-    sessionStorage.setItem('hrPulseSession',JSON.stringify({grant}));
     const uid='234500000000';
     const fetch=vi.spyOn(window,'fetch')
       .mockResolvedValueOnce(Response.json({details:{uid,name:'Sample Candidate',relationName:'',dob:'',address:'',gender:''}}))
       .mockResolvedValueOnce(Response.json({matches:[match]}));
     const {el,click,getByLabelText}=setup();
+    sessionStorage.setItem('hrPulseSession',JSON.stringify({grant}));
     const file=new File(['%PDF-1.7'],'sample-aadhaar.pdf',{type:'application/pdf'});
     fireEvent.change(getByLabelText('Choose Aadhaar card from gallery'),{target:{files:[file]}});
     await waitFor(()=>expect(el('#aadhaarHistory')).toBeVisible());
@@ -152,7 +170,6 @@ describe('Trial workflow preview',()=>{
 
   it('finds a past pass saved for the same account at another site',async()=>{
     const uid='234500000000';
-    sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43),profile:{actor:scope.owner,permissions:{application:'HR'}}}));
     const savedPass={id:'saved-pass',formNo:'TF/2026-27/0002',createdAt:'2026-10-18',history:[],docs:{},
       stage:'done',result:'PASS',aadhaar:uid,site:'Sasti OB',trialDate:'2026-10-18',vehicles:['Excavator']};
     const prefix='hrPulse.localTrialWorkflow.v1:';
@@ -164,6 +181,7 @@ describe('Trial workflow preview',()=>{
       .mockResolvedValueOnce(Response.json({details:{uid,name:'Sample Candidate',relationName:'',dob:'',address:'',gender:''}}))
       .mockResolvedValueOnce(Response.json({matches:[{result:'FAIL',site:'Jayant OB East',equipment:'Dozer',trialDate:'2026-11-01'}]}));
     const {el,getByLabelText}=setup();
+    sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43),profile:{actor:scope.owner,permissions:{application:'HR'}}}));
     const file=new File(['%PDF-1.7'],'sample-aadhaar.pdf',{type:'application/pdf'});
     fireEvent.change(getByLabelText('Choose Aadhaar card from gallery'),{target:{files:[file]}});
     await waitFor(()=>expect(el('#aadhaarHistory')).toBeVisible());
@@ -174,7 +192,6 @@ describe('Trial workflow preview',()=>{
   });
 
   it('imports Excel candidates and applies multiple scans without overwriting confirmed details',async()=>{
-    sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43)}));
     const workbook=utils.book_new();
     utils.book_append_sheet(workbook,utils.aoa_to_sheet([
       ['Aadhaar No','Medical','Name','Mobile','DL valid','DL seen'],
@@ -191,6 +208,7 @@ describe('Trial workflow preview',()=>{
       .mockResolvedValueOnce(Response.json({details:{...details,name:'New Candidate',uid:'234500000001'}}))
       .mockResolvedValueOnce(Response.json({matches:[{result:'FAIL',site:'Sasti OB',equipment:'Dozer',failureReason:'Unsafe handling'}]}));
     const {el,click,input,change}=setup();
+    sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43)}));
     click('[data-tab="hr"]');
     click('[data-m="bulk"]');
     fireEvent.change(el('#bExcelFile'),{target:{files:[excel]}});
