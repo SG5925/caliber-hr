@@ -72,7 +72,7 @@ describe('Trial workflow preview',()=>{
     change('#d_medical','Yes');
     fireEvent.submit(el('#single'));
     change('#role','trainer');
-    await waitFor(()=>expect(el('[data-f="trainer"]')).toHaveValue(''));
+    await waitFor(()=>expect(el('[data-f="trainer"]')).toHaveValue('Sample Signer'));
     request.mockImplementation(async()=>Response.json(hierarchyTrainer));
     fireEvent.focus(window);
     await waitFor(()=>expect(el('[data-f="trainer"]')).toHaveValue('Sajad Ali'));
