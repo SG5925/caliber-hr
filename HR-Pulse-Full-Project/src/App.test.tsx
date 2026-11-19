@@ -24,7 +24,7 @@ it('opens the full trial workflow directly from the Trial Form menu',async()=>{
  expect(container.querySelector('[aria-label="Trial workflow local preview"]')?.shadowRoot?.querySelector('#myName')).toHaveValue('HR user');
  expect(screen.queryByRole('group',{name:'Trial Form views'})).toBeNull();
  const preview=container.querySelector('[aria-label="Trial workflow local preview"]')?.shadowRoot;
- expect(preview?.querySelector('#tabs button[aria-pressed="true"]')).toHaveTextContent('Upload Aadhaar');
+ expect(preview?.querySelector('#tabs button[aria-pressed="true"]')).toHaveTextContent('Upload Aadhaar Card & Driving License');
  const stages=preview?.querySelector('#pipe');
  expect(stages).toHaveAttribute('hidden');
  expect(Array.from(stages?.querySelectorAll('.l')??[],label=>label.textContent))
