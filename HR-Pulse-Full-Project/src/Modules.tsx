@@ -152,7 +152,7 @@ export function Approvals({grant,actor,notice,kind,completed}:{grant:string;acto
         <table className={completed?'approval-table completed-approval-table':'approval-table'}>
           <thead><tr>
             <th scope="col">Record</th><th scope="col">Module</th><th scope="col">Status</th><th scope="col">Stage / approver</th><th scope="col">{transferApprovals?'To designation':'Designation'}</th><th scope="col">Action</th>
-            {completed&&<><th scope="col">Offer Letter</th><th scope="col">Appointment Letter</th></>}
+            {completed&&<><th scope="col">Appointment Letter</th><th scope="col">Confirmation Letter</th></>}
           </tr></thead>
           <tbody>{rows.map((row,index)=>{
             const steps=stepsFor(row);
@@ -165,8 +165,8 @@ export function Approvals({grant,actor,notice,kind,completed}:{grant:string;acto
               <td className="approval-designation">{transferApprovals?String(row.data?.toDesignation||'—'):row.designation||(row.data?.officeData as Record<string,string>|undefined)?.['Designation *']||(row.data?.designationTitle as string|undefined)||'—'}</td>
               <td><button onClick={()=>{setLocalReviewChanged(false);setSelected(row);setComments('');setError('');}}>Review</button></td>
               {completed&&<>
-                <td><button onClick={()=>setLetter({employee:row,kind:'offer',serial:rows.length-index})}>View Offer Letter</button></td>
                 <td><button onClick={()=>setLetter({employee:row,kind:'appointment',serial:rows.length-index})}>View Appointment Letter</button></td>
+                <td></td>
               </>}
             </tr>;
           })}</tbody>
