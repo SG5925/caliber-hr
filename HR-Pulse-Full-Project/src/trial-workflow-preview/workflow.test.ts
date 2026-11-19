@@ -5,9 +5,12 @@ import {utils,write} from 'xlsx';
 import TrialWorkflowPreview from './TrialWorkflowPreview';
 import {sameDocumentBirthDate,type PrepareJoining} from './mount';
 import * as trialResultFiles from './trialResultFiles';
+import * as telegramSend from './telegramSend';
+import {reviewTrial} from './reviewQueue';
 import type {Trial} from './records';
 
 vi.mock('./optimizeDrivingVideo',()=>({optimizeDrivingVideo:vi.fn(async(file:File)=>({file,format:{label:'WebM/AV1'}}))}));
+vi.mock('./telegramSend',async()=>({...await vi.importActual<typeof import('./telegramSend')>('./telegramSend'),fetchReviewQueue:vi.fn(async()=>[])}));
 
 const scope = {company:'CMLL',site:'Jayant OB East',region:'NCL',group:'OB / COAL',name:'Sample Signer',owner:'sample',department:'Driver'};
 const hierarchyTrainer={actor:'sajadali',name:'Sajad Ali',site:'Jayant OB East'};
@@ -42,6 +45,18 @@ describe('Trial workflow preview',()=>{
     click('[data-tab="hr"]');
     expect(el('#f_ref')).toBeRequired();
     expect(el('#f_conducted')).toBeRequired();
+  });
+  it('loads a trainer PASS into the PM queue without opening joining details',async()=>{
+    sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43)}));
+    vi.spyOn(window,'fetch').mockResolvedValue(Response.json({...hierarchyTrainer,roles:['pm']}));
+    const row=reviewTrial({id:'shared-trial',formNo:'TF/2026-27/0001',site:scope.site,resultAt:'2026-11-19T12:00:00Z',
+      fields:{Result:'PASS','Name of candidate':'Shared Candidate','Mobile no.':'9876543210'}})!;
+    vi.mocked(telegramSend.fetchReviewQueue).mockResolvedValueOnce([row]);
+    const onCleared=vi.fn();const {el}=setup({},onCleared);
+    await waitFor(()=>expect(el('#apList')).toHaveTextContent('Shared Candidate'));
+    expect(el('#apList')).toHaveTextContent('TF/2026-27/0001');
+    expect(onCleared).not.toHaveBeenCalled();
+    expect(el('#bTrainer')).toHaveTextContent('0');
   });
   it('reloads a trainer saved in another tab without losing the candidate draft',async()=>{
     sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43)}));

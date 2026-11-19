@@ -4,10 +4,10 @@ import {savedSession} from '../api';
 import {readGeminiAadhaar, type AadhaarDetails,type DrivingLicenceDetails} from '../geminiOcr';
 import {applyBulkAadhaar, blankBulkRow, bulkColumns, bulkConfirmations, downloadBulkWorkbook, hasBulkCandidate, readBulkWorkbook} from './bulkCandidates';
 import {candidateProblem, canApprove, date, DOCS, equipment, indiaDay, indiaTime, isClearedForJoining, licenceDate, localDateTime,
-  NEXT, nextNumber, post, resultMessage, ROLES, STAGES, VEHICLES, type Candidate, type DrivingLicenceClass, type Outcome, type Role, type Trial} from './records';
+  NEXT, nextNumber, normalizeTrialApproval, post, resultMessage, ROLES, STAGES, VEHICLES, type Candidate, type DrivingLicenceClass, type Outcome, type Role, type Trial} from './records';
 import {approvalTable, detailView, esc, overviewTable, trainerForms} from './views';
 import {getTrialResultFile, removeTrialResultFiles, saveTrialResultFiles} from './trialResultFiles';
-import {deliveryStatus, fetchDecisions, fetchTrialTrainer, sendApproval, sendPart1, sendResults, type TrialScope} from './telegramSend';
+import {deliveryStatus, fetchReviewQueue, fetchTrialTrainer, sendApproval, sendPart1, sendResults, type TrialScope} from './telegramSend';
 import {siteDisplayName} from '../siteNames';
 import {findPreviousTrial} from './previousTrial';
 import type {TrialMatch} from '../TrialAadhaarHistory';
@@ -60,6 +60,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   let bulkBusy = false;
   let roleLocked = false;
   let submittingResults = false;
+  let submittingApproval = false;
   let modalFocus: HTMLElement | null = null;
   let telegramFocus: HTMLElement | null = null;
   let afterTelegram: (()=>void) | undefined;
@@ -78,7 +79,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
       || !Array.isArray(item.vehicles) || typeof item.createdAt !== 'string' || !item.docs)) {
       throw new Error('The saved preview records could not be read.');
     }
-    return data;
+    return (data as Trial[]).map(normalizeTrialApproval);
   }
   function read(): Trial[] {
     const current = readKey(persistKey);
@@ -637,10 +638,10 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
         if (!effects.signal.aborted && tab==='trainer') renderTrainer();
       }
     }
-    const committed = !effects.signal.aborted && commit(latest=>{
-      if (latest.filter(row=>ids.has(row.id)&&row.stage==='trainer').length!==ids.size) throw new Error('The trainer queue changed. Reopen it and try again.');
-      return latest.map(row=>{
-        if(!ids.has(row.id)) return row;
+    const latest=read();
+    if(latest.filter(row=>ids.has(row.id)&&row.stage==='trainer').length!==ids.size)return toast('The trainer queue changed. Reopen it and try again.');
+    latest.forEach(row=>{
+        if(!ids.has(row.id)) return;
         const d=drafts.get(row.id)!;
         const attachment=files.get(row.id);
         const videoAttachment=videos.get(row.id);
@@ -651,9 +652,19 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
           videoAttachment:videoAttachment && {id:videoAttachment.id,name:videoAttachment.file.name},
         },history:[...row.history,{role:'trainer',action:'Trial result: '+d.result,by:name,at}]};
         changed.push(next);
-        return next;
-      });
     });
+    let delivery:Awaited<ReturnType<typeof sendResults>>|undefined;
+    if(savedSession()?.grant){
+      submittingResults=true;renderTrainer();
+      try{
+        delivery=await sendResults(changed,new Map(changed.map(row=>[row.id,files.get(row.id)?.file])),new Map(changed.map(row=>[row.id,videos.get(row.id)?.file])),name,scope);
+      }catch(error){
+        if(!effects.signal.aborted)toast(error instanceof Error?error.message:'Could not send results to PM. Try again.');
+        await removeTrialResultFiles(storedFiles.map(file=>file.id)).catch(()=>{});
+        return;
+      }finally{submittingResults=false;if(!effects.signal.aborted)renderTrainer();}
+    }
+    const committed = !effects.signal.aborted && commit(current=>current.map(row=>changed.find(next=>next.id===row.id)||row));
     if (!committed) {
       if (storedFiles.length) await removeTrialResultFiles(storedFiles.map(file=>file.id)).catch(()=>{});
       return;
@@ -665,12 +676,8 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     }
     const passed=changed.filter(row=>row.result==='PASS');
     toast(`${changed.length} results sent to PM – ${passed.length} pass, ${changed.length-passed.length} fail.`);
-    const resultFiles=new Map<string,File|undefined>();for(const row of changed) resultFiles.set(row.id,files.get(row.id)?.file);
-    const drivingVideos=new Map<string,File|undefined>();for(const row of changed) drivingVideos.set(row.id,videos.get(row.id)?.file);
-    if (!savedSession()?.grant) {if(passed.length) showTelegram(passed.map(resultMessage),'Trial PASS – sent to PM for approval');return;}
-    void sendResults(changed,resultFiles,drivingVideos,name,scope)
-      .then(d=>{if(!effects.signal.aborted) showTelegram([d.message],changed.length>1?`Batch result – sent to PM (Excel sheet + attachments)`:'Trial result – sent to PM for approval',undefined,deliveryStatus(d));})
-      .catch(error=>{if(!effects.signal.aborted){toast('Telegram: '+(error instanceof Error?error.message:'could not send'));if(passed.length) showTelegram(passed.map(resultMessage),'Trial PASS – sent to PM for approval');}});
+    if(delivery)showTelegram([delivery.message],'Trial result – sent to PM for approval',undefined,deliveryStatus(delivery));
+    else if(passed.length)showTelegram(passed.map(resultMessage),'Trial PASS – sent to PM for approval');
   }
   function focusResultUpload(id: string, selector='[data-choose-result-file]') {
     $$<HTMLButtonElement>('#trList '+selector).find(button=>
@@ -764,7 +771,8 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   };
   $('#trSubmit').onclick=()=>void submitResults();
 
-  function decide(approved: boolean, ids: string[], note: string) {
+  async function decide(approved: boolean, ids: string[], note: string) {
+    if(submittingApproval)return false;
     const reviewer=role;
     if (!canApprove(reviewer)) return false;
     const name=signer();
@@ -772,6 +780,17 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (!ids.length) {toast('Select at least one form.');return false;}
     if (!approved&&!note) {toast('Write a note to explain the rejection.');return false;}
     const at=new Date().toISOString(), changed: Trial[]=[];
+    let delivery:Awaited<ReturnType<typeof sendApproval>>|undefined;
+    if(savedSession()?.grant){
+      const current=read().filter(row=>ids.includes(row.id)&&row.stage===reviewer);
+      if(current.length!==ids.length){toast('The approval queue changed. Select the forms again.');return false;}
+      const proposed=current.map(row=>({...row,stage:approved?NEXT[reviewer]:'rejected',history:[...row.history,{role:reviewer,action:approved?'Approved':'Rejected',by:name,at,note}]} as Trial));
+      submittingApproval=true;
+      try{delivery=await sendApproval(proposed,reviewer,approved,note,name,at,getTrialResultFile,scope);}
+      catch(error){toast(error instanceof Error?error.message:'Could not save the approval. Try again.');return false;}
+      finally{submittingApproval=false;}
+      if(effects.signal.aborted)return false;
+    }
     if(!commit(latest=>{
       if (latest.filter(row=>ids.includes(row.id)&&row.stage===reviewer).length!==ids.length) throw new Error('The approval queue changed. Select the forms again.');
       return latest.map(row=>{
@@ -791,11 +810,8 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     const prepared=onCleared&&cleared.length?prepareJoining(cleared):undefined;
     const onClose=prepared?()=>void openJoining(prepared):undefined;
     const summary=!approved?`Rejected by ${ROLES[reviewer]}`:reviewer==='director'?'Final approval by Directors – cleared to join':`Approved by ${ROLES[reviewer]} – sent to ${ROLES[NEXT[reviewer] as Role]||'next stage'}`;
-    if (savedSession()?.grant) {
-      void sendApproval(changed,reviewer,approved,note,name,at,getTrialResultFile,scope)
-        .then(d=>{if(!effects.signal.aborted) showTelegram(d.message.split('\n\n———\n\n'),summary,onClose,deliveryStatus(d));})
-        .catch(error=>{if(!effects.signal.aborted){toast('Telegram: '+(error instanceof Error?error.message:'could not send'));if(approved&&reviewer==='director'&&passed.length) showTelegram(passed.map(resultMessage),'Cleared to join – final approval',onClose);}});
-    } else if(approved&&reviewer==='director'&&passed.length) showTelegram(passed.map(resultMessage),'Cleared to join – final approval',onClose);
+    if(delivery)showTelegram(delivery.message.split('\n\n———\n\n'),summary,onClose,deliveryStatus(delivery));
+    else if(approved&&reviewer==='director'&&passed.length) showTelegram(passed.map(resultMessage),'Cleared to join – final approval',onClose);
     return true;
   }
   $('#apList').onchange=event=>{
@@ -810,8 +826,8 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     syncSelection();
   };
   for (const [selector,approved] of [['#apApprove',true],['#apReject',false]] as const) {
-    $(selector).onclick=()=>{
-      if (!decide(approved,[...selected],value('#apNote'))&&!approved) $('#apNote').focus();
+    $(selector).onclick=async()=>{
+      if (!await decide(approved,[...selected],value('#apNote'))&&!approved) $('#apNote').focus();
     };
   }
   function openDetails(id: string, source: HTMLElement) {
@@ -844,7 +860,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
       if (!effects.signal.aborted) toast('Could not open the trial result file.');
     }
   }
-  $('#modal').onclick=event=>{
+  $('#modal').onclick=async event=>{
     const target=event.target as HTMLElement;
     if(target.id==='modal'||target.id==='mClose') return closeDetails();
     if(target.hasAttribute('data-open-joining')){
@@ -865,7 +881,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     }
     if (target.dataset.decide){
       const approved=target.dataset.decide==='approve';
-      if(decide(approved,[detailId],value('#mNote'))) closeDetails($('#tgpop').hidden===true);
+      if(await decide(approved,[detailId],value('#mNote'))) closeDetails($('#tgpop').hidden===true);
       else if(!approved) $('#mNote').focus();
     }
   };
@@ -995,24 +1011,27 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
      leaves that approver's queue here too. */
   async function syncFromServer() {
     if (effects.signal.aborted || !savedSession()?.grant) return;
-    const open = read().filter(row => row.stage!=='done' && row.stage!=='rejected' && row.stage!=='trainer');
-    if (!open.length) return;
-    let rows;
-    try { rows = await fetchDecisions(open.map(row => row.formNo)); } catch { return; }
-    if (effects.signal.aborted || !rows.length) return;
-    let changed = 0;
-    commit(latest => latest.map(row => {
-      const remote = rows.find(r => r.formNo===row.formNo);
-      if (!remote) return row;
-      const missing = (remote.history||[]).filter(h => h.role && ['Approved','Rejected'].includes(h.action) && !row.history.some(x => x.role===h.role && x.at===h.at));
-      if (!missing.length) return row;
-      const history = [...row.history, ...missing];
-      const last = history[history.length-1];
-      const stage = last.action==='Rejected' ? 'rejected' : (NEXT as Record<string,string>)[last.role] || row.stage;
-      changed++;
-      return {...row, history, stage: stage as Trial['stage']};
-    }));
-    if (changed) toast(`${changed} form(s) updated from Telegram approvals.`);
+    try{
+      const queue=await fetchReviewQueue(scope);
+      if(effects.signal.aborted)return;
+      if(queue.length)commit(latest=>{
+        const merged=[...latest];
+        for(const remote of queue){
+          const index=merged.findIndex(row=>row.formNo===remote.formNo);
+          if(index<0)merged.push(remote);
+          else{
+            const local=merged[index];
+            if(local.result==='PASS'&&local.name===remote.name&&local.mobile===remote.mobile){
+              // Keep browser attachments, while the server supplies shared review decisions.
+              if(Date.parse(remote.outcome!.at)<Date.parse(local.outcome?.at||''))continue;
+              const history=[...local.history.filter(h=>!canApprove(h.role)),...remote.history];
+              merged[index]=normalizeTrialApproval({...local,history});
+            }
+          }
+        }
+        return merged;
+      });
+    }catch{/* Existing browser records remain available if the queue cannot be fetched. */}
   }
   void syncFromServer();
   const syncTimer = setInterval(() => { if (document.visibilityState==='visible') void syncFromServer(); }, 20000);

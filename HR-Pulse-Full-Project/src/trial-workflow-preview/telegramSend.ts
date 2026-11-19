@@ -5,6 +5,7 @@
 import {api, savedSession} from '../api';
 import {utils as xlsxUtils, write as xlsxWrite} from 'xlsx';
 import {equipment, type Trial} from './records';
+import {reviewTrial,type ReviewRecord} from './reviewQueue';
 
 export type Delivery = {message: string; recipients: number; connected: string[]; bot?: string; configured?: boolean; issues?: string[]};
 export type TrialScope = {company: string; site: string; region: string; group: string; department: string};
@@ -42,6 +43,10 @@ const grantOrThrow = () => {const grant = savedSession()?.grant; if (!grant) thr
 
 export async function fetchTrialTrainer(scope:TrialScope):Promise<TrialTrainer>{
   return api<TrialTrainer>(grantOrThrow(),'telegram/trial-trainer','POST',target(scope));
+}
+export async function fetchReviewQueue(scope:TrialScope):Promise<Trial[]>{
+  const out=await api<{rows:ReviewRecord[]}>(grantOrThrow(),'telegram/trial-review-queue','POST',target(scope));
+  return (out.rows||[]).map(reviewTrial).filter((row):row is Trial=>Boolean(row));
 }
 
 /* Human-readable delivery line for the popup. */

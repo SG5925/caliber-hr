@@ -3,6 +3,7 @@ import {hierarchyTemplates,currentHierarchy,withOfficeHr,withDriverTrainer} from
 import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {grantedMenus} from './modules.mjs';
 import {assignedSites} from './scope.mjs';
+import {trialReviewStage} from './trial-review.mjs';
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status});};
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const username=value=>String(value||'').trim().toLowerCase();
@@ -237,6 +238,8 @@ async function applyTrialStage(pool,db,{rows,reviewer,decision,target,batchId,xl
  const recipients=[...new Set(nextRecipients.map(recipientActor))];
  const messages=[];
  for(const r of rows){const old=(await db.query("SELECT id,data FROM hr_records WHERE kind='trialForms' AND code=$1 FOR UPDATE",[r.formNo])).rows[0];
+  if(!old||old.data?.fields?.Result!=='PASS'||trialReviewStage(old.data.history,old.data.resultAt)!==reviewer)fail('Complete the previous trial approval stage before this review.',409);
+  r.history=[...(old.data.history||[]),{role:reviewer,action:decision.approved?'Approved':'Rejected',by:decision.by,at:decision.at,note:decision.note}];
   const data={...(old?.data||{}),formNo:r.formNo,site:r.site||old?.data?.site,company:r.company||old?.data?.company,department:r.department||old?.data?.department,batchId:batchId||old?.data?.batchId||'',fields:{...(old?.data?.fields||{}),...r.fields},attachments:r.attachments?.length?r.attachments:old?.data?.attachments||[],history:r.history,docs:r.docs||old?.data?.docs||{},trialBy:r.trialBy||old?.data?.trialBy||r.fields['Examiner name']||'',stage:stage==='reject'?'REJECTED':stage==='final'?'CLEARED':'APPROVAL',pendingRole:stage==='reject'||stage==='final'?'':stage,status:stageStatus,lastDecision:{reviewer,...decision},savedBy:actor,savedAt:new Date().toISOString()};
   let id=old?.id;if(id)await db.query('UPDATE hr_records SET data=$1,status=$2,version=version+1,updated_by=$3,updated_at=now() WHERE id=$4',[data,stage==='reject'?'REJECTED':'ACTIVE',actor,id]);
   else id=(await db.query("INSERT INTO hr_records(id,kind,code,name,data,status,created_by,updated_by) VALUES(gen_random_uuid(),'trialForms',$1,$2,$3,'ACTIVE',$4,$4) RETURNING id",[r.formNo,data.fields['Name of candidate']||r.formNo,data,actor])).rows[0].id;
@@ -461,6 +464,19 @@ export function createTelegram(pool){
    const out=await tx(db=>applyTrialStage(pool,db,{rows,reviewer,decision,target,batchId,xlsx,actor:profile.actor}));
    return {saved:true,stage:out.stage,telegram:{...(await recipientIssues(pool,out.recipients)),message:out.messages.join('\n\n———\n\n')}};
   }
+  if(route==='trial-review-queue'&&method==='POST'){
+   if(!grantedMenus(profile).has('Employee Master'))fail('Employee Master permission required',403);
+   const template=trialHierarchySite({site:String(input.site||''),region:String(input.region||''),group:String(input.group||'')});
+   if(!template)return {rows:[]};
+   const scope=assignedSites(profile);
+   const rows=(await pool.query(`SELECT id,data FROM hr_records t WHERE kind='trialForms' AND status='ACTIVE'
+    AND data->'fields'->>'Result'='PASS' AND lower(data->>'site')=ANY($1)
+    AND ($2::text[] IS NULL OR lower(t.data->>'site')=ANY($2) OR EXISTS(SELECT 1 FROM hr_records s WHERE s.kind='sites'
+      AND (lower(s.code)=ANY($2) OR lower(s.name)=ANY($2) OR s.id::text=ANY($2))
+      AND (lower(s.name)=lower(t.data->>'site') OR lower(s.code)=lower(t.data->>'site'))))
+    ORDER BY updated_at DESC LIMIT 300`,[[template.code,template.name,...(trialSiteAliases[template.code]||[])].map(norm),scope])).rows;
+   return {rows:rows.map(({id,data})=>{const {attachments,...record}=data;return {...record,id};})};
+  }
   /* ---- Browser sync: decisions taken on Telegram since the browser last looked ---- */
   if(route==='trial-sync'&&method==='POST'){
    if(!grantedMenus(profile).has('Employee Master'))fail('Employee Master permission required',403);
@@ -477,7 +493,7 @@ export function createTelegram(pool){
    const attachments=cleanAttachments(input.attachments);
    requireTrialUploads(attachments);
    const record={...(prev?.data||{}),formNo,heading:String(input.heading||'').slice(0,120),site:String(input.site||'').slice(0,80),company:String(input.company||'').slice(0,120),department:String(input.department||'').slice(0,80),batchId:String(input.batchId||prev?.data?.batchId||'').slice(0,40),fields:{...(prev?.data?.fields||{}),...fields},attachments:attachments.length?attachments:prev?.data?.attachments||[],stage:'RESULT',status:'Sent to PM for approval',trialBy:String(input.trialBy||fields['Examiner name']||profile.name||profile.actor).slice(0,80),resultBy:profile.actor,resultAt:new Date().toISOString(),savedBy:profile.actor,savedAt:new Date().toISOString()};
-   Object.assign(record,{pendingRole:'pm',history:Array.isArray(record.history)?record.history:[]});
+   Object.assign(record,{pendingRole:'pm',history:[]});
    const message=trialResultMessage(record,profile.name||profile.actor),recipients=(await trialRecipientsFor(pool,'result',{site:record.site,region:String(input.region||'').slice(0,80),company:record.company,group:String(input.group||'').slice(0,80)})).map(recipientActor);
    await tx(async db=>{let id=prev?.id;
     if(id)await db.query('UPDATE hr_records SET name=$1,data=$2,version=version+1,updated_by=$3,updated_at=now() WHERE id=$4',[record.fields['Name of candidate'],record,profile.actor,id]);
@@ -504,7 +520,7 @@ export function createTelegram(pool){
    await tx(async db=>{const stored=(await db.query("SELECT id,code,data FROM hr_records WHERE kind='trialForms' AND status='ACTIVE' AND data->>'batchId'=$1 FOR UPDATE",[batchId])).rows;
     const rows=[...stored];for(const [formNo,g] of given)if(!stored.some(r=>r.code===formNo))rows.push({id:null,code:formNo,data:{formNo,heading,site,company,department,batchId,fields:g.fields,attachments:g.attachments,stage:'PART1',status:'Sent to driver trainer'}});
     if(!rows.length)fail('Batch not found',404);
-    for(const row of rows){const res=results.find(r=>r.formNo===row.code);if(!res)fail(`Missing result for ${row.code}`);const g=given.get(row.code);const data={...row.data,fields:{...row.data.fields,...(g?.fields||{}),Result:res.result,'If FAIL – reason':res.result==='FAIL'?res.reason:'', 'Examiner remarks':res.remarks,'Examiner name':trialBy},attachments:g?.attachments?.length?g.attachments:row.data.attachments||[],stage:'RESULT',pendingRole:res.result==='PASS'?'pm':'',history:Array.isArray(row.data.history)?row.data.history:[],status:'Sent to PM for approval',trialBy,resultBy:profile.actor,resultAt:new Date().toISOString(),savedBy:profile.actor,savedAt:new Date().toISOString()};
+    for(const row of rows){const res=results.find(r=>r.formNo===row.code);if(!res)fail(`Missing result for ${row.code}`);const g=given.get(row.code);const data={...row.data,fields:{...row.data.fields,...(g?.fields||{}),Result:res.result,'If FAIL – reason':res.result==='FAIL'?res.reason:'', 'Examiner remarks':res.remarks,'Examiner name':trialBy},attachments:g?.attachments?.length?g.attachments:row.data.attachments||[],stage:'RESULT',pendingRole:res.result==='PASS'?'pm':'',history:[],status:'Sent to PM for approval',trialBy,resultBy:profile.actor,resultAt:new Date().toISOString(),savedBy:profile.actor,savedAt:new Date().toISOString()};
      if(row.id)await db.query('UPDATE hr_records SET data=$1,version=version+1,updated_by=$2,updated_at=now() WHERE id=$3',[data,profile.actor,row.id]);
      else row.id=(await db.query("INSERT INTO hr_records(id,kind,code,name,data,status,created_by,updated_by) VALUES(gen_random_uuid(),'trialForms',$1,$2,$3,'ACTIVE',$4,$4) RETURNING id",[row.code,data.fields['Name of candidate']||row.code,data,profile.actor])).rows[0].id;
      await db.query("INSERT INTO hr_audit(actor,action,kind,record_id,detail) VALUES($1,'SAVE_TRIAL_FORM','trialForms',$2,$3)",[profile.actor,row.id,{formNo:row.code,result:res.result,batchId}]);records.push(data);}

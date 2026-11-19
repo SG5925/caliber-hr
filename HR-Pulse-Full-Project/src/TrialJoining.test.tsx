@@ -6,6 +6,16 @@ import {prepareTrialJoining,saveTrialHandoff} from './trialHandoff';
 import {DOCS,type Trial} from './trial-workflow-preview/records';
 
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();sessionStorage.clear();});
+it('locks an existing joining draft when the trial skipped the approval chain',async()=>{
+ const clearance={id:'trial',formNo:'TF/2026-27/0001',name:'Pending Candidate',mobile:'9876543210',aadhaar:'',site:'Jayant OB East',post:'Driver' as const,stage:'done' as const,result:'PASS' as const,history:[]};
+ const handoff={id:clearance.id,formNo:clearance.formNo,name:clearance.name,site:clearance.site,post:clearance.post,fields:{},owner:'site-hr',clearance};
+ const draft:drafts.JoiningDraft={id:'draft',owner:'site-hr',group:'OB / COAL',step:1,category:'Driver',defaults:{joiningCategory:'NCL',site:'Jayant OB East',department:'Driver',subdepartment:'Heavy Vehicles',designation:'Tipper Driver'},fields:{},updatedAt:'2026-11-19',trialHandoff:handoff};
+ vi.spyOn(drafts,'listJoiningDrafts').mockResolvedValue([]);
+ vi.stubGlobal('fetch',async()=>Response.json({rows:[],total:0}));
+ render(<EmployeeLocation draftOwner="site-hr" employeeGroup="OB / COAL" initialTrialDraft={draft}/>);
+ expect(await screen.findByRole('alert')).toHaveTextContent('Joining details are locked until PM, Office HR, Regional HR and Director approvals are complete');
+ expect(screen.queryByRole('heading',{name:'Joining & Personal Details',level:2})).toBeNull();
+});
 
 it('opens a completed operator trial at step two and saves it on the sixth step without employee approval',async()=>{
  const id='00000000-0000-4000-8000-000000000001';
@@ -16,7 +26,7 @@ it('opens a completed operator trial at step two and saves it on the sixth step 
   batch:'',createdAt:'2026-11-12',trialDate:'2026-11-12T10:00',photo:'data:image/jpeg;base64,cGhvdG8=',post:'Driver',experience:'',vehicles:['Excavator'],otherVehicle:'',
   docs:Object.fromEntries(DOCS.map(([key])=>[key,{seen:'',remarks:''}])) as Trial['docs'],
   outcome:{at:'2026-11-12',result:'PASS',post:'Operator',machine:'Excavator',reason:'',trainer:'Sample Trainer',remarks:''},
-  history:[{role:'pm',by:'Sample PM',at:'2026-11-12',action:'Approved'},{role:'rhr',by:'Sample RHR',at:'2026-11-12',action:'Approved'},{role:'director',by:'Sample Director',at:'2026-11-12',action:'Approved'}],
+  history:[{role:'pm',by:'Sample PM',at:'2026-11-12',action:'Approved'},{role:'ohr',by:'Sample Office HR',at:'2026-11-12',action:'Approved'},{role:'rhr',by:'Sample RHR',at:'2026-11-12',action:'Approved'},{role:'director',by:'Sample Director',at:'2026-11-12',action:'Approved'}],
  };
  const saved=new Map<string,drafts.JoiningDraft>();
  vi.spyOn(drafts,'listJoiningDrafts').mockImplementation(async()=>[...saved.values()]);

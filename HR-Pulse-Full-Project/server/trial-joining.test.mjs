@@ -5,7 +5,7 @@ import {createService} from './service.mjs';
 const profile={actor:'hr',permissions:{hrDesktopAccess:['Employee Master']}};
 const id='00000000-0000-4000-8000-000000000001';
 const trial={id,formNo:'TF/2026-27/0001',stage:'done',result:'PASS',post:'Driver',aadhaar:'234500000000',
- history:['pm','rhr','director'].map(role=>({role,action:'Approved'}))};
+ history:['pm','ohr','rhr','director'].map(role=>({role,action:'Approved'}))};
 const employee={code:'EMP-1',name:'Sample Candidate',joiningDate:'2026-11-12',category:'Permanent',companyId:id,
  __officeData:{
   'Joining Category *':'NCL','Employee Code':'EMP-1','Full Name as per Aadhar':'Sample Candidate','Full Name *':'Sample Candidate',
