@@ -1,7 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {createTelegram,validateTelegramHierarchy,telegramSteps,webhookSecretValid,queueTelegram,deliverTelegram,leaveMessage,trialTrainerFor,requireTrialUploads} from './telegram.mjs';
+import {trialReviewStage} from './trial-review.mjs';
+test('trial reviews cannot skip PM, Office HR, Regional HR or Director',()=>{
+ const roles=['pm','ohr','rhr','director'];
+ const approvals=roles.map(role=>({role,action:'Approved',at:'2026-11-19T12:00:00Z'}));
+ for(let index=0;index<=roles.length;index++)assert.equal(trialReviewStage(approvals.slice(0,index)),roles[index]||'done');
+ assert.equal(trialReviewStage(approvals.filter(h=>h.role!=='ohr')),'ohr');
+ assert.equal(trialReviewStage(approvals,'2026-11-19T13:00:00Z'),'pm');
+});
+test('the approval endpoint rejects Director review while PM is still pending',async()=>{
+ const db={release(){},query:async sql=>sql.includes('SELECT id,data')?{rows:[{id:'trial',data:{fields:{Result:'PASS'},history:[]}}]}:{rows:[]}};
+ const service=createTelegram({query:db.query,connect:async()=>db});
+ await assert.rejects(service.telegramApi({actor:'admin',permissions:{hrDesktopAccess:['Employee Master']}},'trial-approval','POST',{
+  reviewer:'director',approved:true,site:'Jayant OB East',region:'NCL',rows:[{formNo:'TF/2026-27/0001',fields:{Result:'PASS'},history:[{role:'director',action:'Approved'}]}],
+ }),{status:409});
+});
+test('shared review queue is site-scoped and omits uploaded file payloads',async()=>{
+ let query,args;
+ const pool={query:async(sql,values)=>{query=sql;args=values;return {rows:[{id:'trial-id',data:{formNo:'TF/1',history:[],fields:{Result:'PASS'},attachments:[{data:'private-file'}]}}]};}};
+ const service=createTelegram(pool),profile={actor:'pm',permissions:{hrDesktopAccess:['Employee Master'],site:'NCL-JAYANT'}};
+ const out=await service.telegramApi(profile,'trial-review-queue','POST',{site:'Jayant OB East',region:'NCL'});
+ assert.deepEqual(args,[['ncl-jayant','jayant ob east'],['ncl-jayant']]);
+ assert.match(query,/\$2::text\[\] IS NULL/);
+ assert.equal(out.rows[0].id,'trial-id');assert.ok(!JSON.stringify(out).includes('private-file'));
+ await assert.rejects(service.telegramApi({...profile,permissions:{}},'trial-review-queue','POST',{}),{status:403});
+});
+import {createTelegram,validateTelegramHierarchy,telegramSteps,webhookSecretValid,queueTelegram,deliverTelegram,leaveMessage,trialTrainerFor,requireTrialUploads,keepTrialDocuments} from './telegram.mjs';
+test('trial identity documents survive result and approval attachment updates',()=>{
+ const old=[{name:'aadhaar.jpg',mime:'image/jpeg',kind:'aadhaar',data:'YWFk'} ,{name:'licence.jpg',mime:'image/jpeg',kind:'drivingLicence',data:'ZGk='}];
+ const next=[{name:'result.pdf',mime:'application/pdf',kind:'trialResult',data:'cGRm'}];
+ const merged=keepTrialDocuments(old,next);
+ assert.deepEqual(merged.map(file=>file.kind),['trialResult','aadhaar','drivingLicence']);
+});
 test('leave templates distinguish intermediate approval and include verified decision details',()=>{
  const record={code:'LR-1024',name:'Test Employee',data:{fromDate:'2026-10-29',toDate:'2026-10-30',chargeHandedOverTo:'Colleague'}};
  const details={siteName:'Nagpur CO',actor:'hr',name:'HR Manager',telegramId:'123456',at:'2026-10-29T10:00:00Z',comments:'Dates unavailable'};

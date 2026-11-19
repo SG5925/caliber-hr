@@ -31,6 +31,7 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
     const mounted = mountTrialPreview(node.shadowRoot||node.attachShadow({mode:'open'}),{owner,legacyOwner,name:signerName,site,region,group,company,department,designation},{
       reset: () => {setUploadVersion(version => version + 1);setAadhaarFile(undefined);setLicenceFront(undefined);setLicenceBack(undefined);},
       setDisabled,
+      documents:()=>checklistDocuments.current,
     },onCleared?async rows=>cleared.current?.(rows,checklistDocuments.current):undefined);
     setDisabled(false);
     setWorkflow(mounted);
@@ -38,14 +39,14 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
     const refreshTrainer=()=>{
       if(!savedSession()?.grant)return;
       void fetchTrialTrainer({site,region,group,company,department})
-        .then(trainer=>{if(active)mounted.setTrainer(trainer.name,trainer.reason);})
-        .catch(error=>{if(active)mounted.setTrainer('',error instanceof Error?error.message:'Could not load the Driver Trainer hierarchy.');});
+        .then(trainer=>{if(active)mounted.setTrainer(trainer.name||signerName,trainer.reason);})
+        .catch(error=>{if(active)mounted.setTrainer(signerName,error instanceof Error?error.message:'Could not load the Driver Trainer hierarchy.');});
     };
     window.addEventListener('focus',refreshTrainer);
     if(savedSession()?.grant){
       void fetchTrialTrainer({site,region,group,company,department})
-        .then(trainer=>{if(active){mounted.setTrainer(trainer.name,trainer.reason);mounted.setRoles(trainer.roles);}})
-        .catch(error=>{if(active)mounted.setTrainer('',error instanceof Error?error.message:'Could not load the Driver Trainer hierarchy.');});
+        .then(trainer=>{if(active){mounted.setTrainer(trainer.name||signerName,trainer.reason);mounted.setRoles(trainer.roles);}})
+        .catch(error=>{if(active)mounted.setTrainer(signerName,error instanceof Error?error.message:'Could not load the Driver Trainer hierarchy.');});
     } else mounted.setTrainer(signerName);
     return ()=>{active=false;window.removeEventListener('focus',refreshTrainer);mounted.dispose();};
   },[owner,legacyOwner,signerName,site,region,group,company,department]);

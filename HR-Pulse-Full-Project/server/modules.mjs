@@ -1,3 +1,4 @@
+import {managementModules, managementMenus} from './management-modules.mjs';
 import {leaveModules,requestFields,policyFields,prepareLeave,validateLeave} from './leave.mjs';
 const text = (key, label, required = false) => ({ key, label, type: 'text', required });
 const ref = (key, label, reference, required = false) => ({ key, label, type: 'reference', reference, required });
@@ -43,16 +44,17 @@ export const modules = {
   workflows: module('Onboarding workflows','Master Configuration',[text('code','Workflow code',true),text('name','Workflow name',true),text('approvers','Approver Pulse usernames, in order (comma separated)',true)]),
   approvalRules: module('Approval matrix','Master Configuration',[text('code','Rule code',true),text('name','Rule name',true),select('target','Module',['employees','leaveRequests'],true),ref('workflowId','Workflow','workflows',true),ref('companyId','Company (blank = all)','companies'),ref('siteId','Site (blank = all)','sites')]),
 };
-Object.assign(modules,leaveModules);
+Object.assign(modules,leaveModules,managementModules);
 modules.outDutyRequests.autoCode=true;
 modules.leaveRequests.fields=requestFields;modules.leaveRequests.autoCode=true;
 modules.leavePolicies.fields=policyFields;
 modules.holidays.fields.push(select('holidayType','Holiday type',['Public','Company','Optional','National','Government','Festival','Declared','Gazetted','Gazetted (General)','Paid (PH)']));
 modules.approvalRules.fields.find(f=>f.key==='target').options.push('leaveEncashments');
-export const menus = ['Calendar','Asset Management','Dashboard','Employee Master','Master Configuration','Employee Onboarding','Employee Directory','Approval Management','Shift Management','Holiday & Leave','Compliance & Statutory','Reports & MIS','Administration','Administration & Settings','Audit Logs'];
+export const menus = ['Calendar','Asset Management','Dashboard','Employee Master','Master Configuration','Employee Onboarding','Employee Directory','Approval Management',...managementMenus,'Shift Management','Holiday & Leave','Compliance & Statutory','Reports & MIS','Administration','Administration & Settings','Audit Logs'];
 export function grantedMenus(profile) { return new Set([...(profile.permissions?.hrDesktopAccess || []),...(profile.permissions?.hrMobileAccess || [])].filter(x => menus.includes(x))); }
 export function canRead(profile, kind) {
   const granted = grantedMenus(profile);
+  if(Object.hasOwn(managementModules,kind))return granted.has(modules[kind].menu)||granted.has('Employee Master');
   if(kind==='calendarEvents')return ['Calendar','Employee Master','Master Configuration'].some(menu=>granted.has(menu));
   if(['assets','assetCategories','assetEmployees','assetAllocationLog','assetExitClearances'].includes(kind))return ['Asset Management','Employee Master','Master Configuration'].some(menu=>granted.has(menu));
   if (kind === 'employees') return ['Employee Master','Employee Onboarding','Employee Directory','Reports & MIS'].some(x=>granted.has(x));
@@ -61,6 +63,7 @@ export function canRead(profile, kind) {
 }
 export function canWrite(profile, kind) {
   const granted = grantedMenus(profile);
+  if(Object.hasOwn(managementModules,kind))return granted.has(modules[kind].menu)||granted.has('Employee Master');
   if(kind==='calendarEvents')return ['Calendar','Employee Master','Master Configuration'].some(menu=>granted.has(menu));
   if(['assets','assetCategories','assetEmployees','assetAllocationLog','assetExitClearances'].includes(kind))return ['Asset Management','Employee Master','Master Configuration'].some(menu=>granted.has(menu));
   if (kind === 'employees') return granted.has('Employee Master') || granted.has('Employee Onboarding');
@@ -79,6 +82,7 @@ export function validate(kind, input) {
       data[field.key]=raw;continue;
     }
     if(field.type==='attachment'){
+      if(field.required && !raw)throw Object.assign(new Error(field.label+' is required'),{status:400});
       if(!raw){data[field.key]='';continue;}
       if(typeof raw!=='string'||!/^data:(application\/pdf|image\/png|image\/jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(raw)||raw.length>690000)throw Object.assign(new Error('Use a PDF, PNG or JPEG attachment up to 500 KB'),{status:400});
       data[field.key]=raw;continue;
@@ -109,6 +113,8 @@ export function validate(kind, input) {
     for (const key of ['halfDayHours','fullDayHours','overtimeAfterHours']) if (data[key] !== '' && data[key] > 24) fail('Day and overtime thresholds cannot exceed 24 hours');
     if (data.halfDayHours !== '' && data.fullDayHours !== '' && data.halfDayHours > data.fullDayHours) fail('Half-day threshold cannot exceed full-day hours');
   }
+  if(kind==='manpowerRequisitions' && !Number.isInteger(data.headcount))throw Object.assign(new Error('Headcount must be a whole number'),{status:400});
+  if(kind==='offerLetters' && data.issuedOn>data.joiningDate)throw Object.assign(new Error('Joining date must be on or after the offer date'),{status:400});
   validateLeave(kind,data);
   return data;
 }

@@ -64,7 +64,7 @@ it('finds candidates saved under the original sign-in and current HR account key
   dl:'DL123',dlValid:'',referredBy:'',employer:'',batch:'',createdAt:'2026-11-12',trialDate:'2026-11-12T10:00',
   photo:'',post:'Driver',experience:'',vehicles:['Excavator'],otherVehicle:'',
   docs:Object.fromEntries(DOCS.map(([key])=>[key,{seen:'',remarks:''}])) as Trial['docs'],
-  history:[{role:'director',action:'Approved',by:'Sample Director',at:'2026-11-12'}],
+  history:(['pm','ohr','rhr','director'] as const).map(role=>({role,action:'Approved',by:'Sample Approver',at:'2026-11-12'})),
   outcome:{at:'2026-11-12',result:'PASS',post:'Driver',machine:'Excavator',reason:'',trainer:'Sample Trainer',remarks:''},
  };
  const failed={...trial,id:'failed',formNo:'TF/2026-27/0002',result:'FAIL',name:'Failed trial'};
