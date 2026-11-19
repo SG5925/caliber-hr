@@ -78,8 +78,18 @@ describe('Trial workflow preview',()=>{
     await waitFor(()=>expect(el('[data-f="trainer"]')).toHaveValue('Sajad Ali'));
     expect(el('#trList')).toHaveTextContent('Hierarchy Candidate');
     click('[aria-label="Hierarchy Candidate: PASS"]');
-    fireEvent.change(el('[data-result-file]'),{target:{files:[new File(['result'],'result.pdf',{type:'application/pdf'})]}});
-    fireEvent.change(el('[data-driving-video]'),{target:{files:[new File(['video'],'trial.mp4',{type:'video/mp4'})]}});
+    const resultPicker=el('#trResultPicker'),videoPicker=el('#trVideoPicker');
+    click('[aria-label="Hierarchy Candidate: Upload trial result"]');
+    request.mockImplementation(async()=>Response.json({...hierarchyTrainer,name:'Updated Trainer'}));
+    fireEvent.focus(window);
+    await waitFor(()=>expect(el('[data-f="trainer"]')).toHaveValue('Updated Trainer'));
+    expect(el('#trResultPicker')).toBe(resultPicker);
+    expect(resultPicker.isConnected).toBe(true);
+    fireEvent.change(resultPicker,{target:{files:[new File(['result'],'result.pdf',{type:'application/pdf'})]}});
+    expect(el('#trList')).toHaveTextContent('result.pdf');
+    click('[aria-label="Hierarchy Candidate: Upload Driving Video"]');
+    expect(el('#trVideoPicker')).toBe(videoPicker);
+    fireEvent.change(videoPicker,{target:{files:[new File(['video'],'trial.mp4',{type:'video/mp4'})]}});
     await waitFor(()=>expect(el('#trList')).toHaveTextContent('trial.mp4'));
     vi.spyOn(trialResultFiles,'saveTrialResultFiles').mockResolvedValue();
     request.mockImplementation(async url=>Response.json(String(url).endsWith('/trial-trainer')
@@ -430,9 +440,11 @@ describe('Trial workflow preview',()=>{
     expect(el('#toast').textContent).toContain('Enter the fail reason');
     input('[aria-label="Batch Candidate: Failure reason"]','Did not complete trial safely');
     const batchCard=el('[aria-label="Batch Candidate: Upload trial result"]').closest<HTMLElement>('[data-id]')!;
-    fireEvent.change(batchCard.querySelector('[data-result-file]')!,{target:{files:[new File(['result'],'batch-result.pdf',{type:'application/pdf'})]}});
+    fireEvent.click(batchCard.querySelector('[data-choose-result-file]')!);
+    fireEvent.change(el('#trResultPicker'),{target:{files:[new File(['result'],'batch-result.pdf',{type:'application/pdf'})]}});
     const refreshedCard=el('[aria-label="Batch Candidate: Upload Driving Video"]').closest<HTMLElement>('[data-id]')!;
-    fireEvent.change(refreshedCard.querySelector('[data-driving-video]')!,{target:{files:[new File(['video'],'batch-driving.mp4',{type:'video/mp4'})]}});
+    fireEvent.click(refreshedCard.querySelector('[data-choose-driving-video]')!);
+    fireEvent.change(el('#trVideoPicker'),{target:{files:[new File(['video'],'batch-driving.mp4',{type:'video/mp4'})]}});
     await waitFor(()=>expect(el('#trList')).toHaveTextContent('batch-driving.mp4'));
     click('#trSubmit');
     await waitFor(()=>expect(el('#bTrainer')).toHaveTextContent('1'));

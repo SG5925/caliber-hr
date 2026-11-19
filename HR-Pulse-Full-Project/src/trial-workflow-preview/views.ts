@@ -35,8 +35,6 @@ function resultFields(id: string, name: string, draft?: Outcome, allowed = false
         <button type="button" class="btn pri" data-choose-result-file aria-label="${prefix}${file?'Replace trial result file':'Upload trial result'}" ${disabled}>${file?'Replace file':'Upload trial result'}</button>
         <button type="button" class="btn pri" data-choose-driving-video aria-label="${prefix}${video?'Replace driving video':'Upload Driving Video'}" ${allowed&&!optimizingVideo?'':'disabled'}>${optimizingVideo?'Optimizing video…':video?'Replace video':'Upload Driving Video'}</button>
       </span>
-      <input type="file" data-result-file accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" ${disabled} hidden>
-      <input type="file" data-driving-video accept="video/*,.mkv,.avi" ${allowed&&!optimizingVideo?'':'disabled'} hidden>
       <span class="note">Required · Result: PDF, JPG or PNG · Video automatically optimized to 480p, 15 FPS (AV1 → VP9 → H.264)</span>
       ${file ? `<span class="trial-result-filename" role="status">${esc(file.name)}</span><button type="button" class="btn sm" data-remove-result-file ${disabled}>Remove file</button>` : ''}
       ${video ? `<span class="trial-result-filename" role="status">${esc(video.name)}</span><button type="button" class="btn sm" data-remove-driving-video ${disabled}>Remove video</button>` : ''}`)}

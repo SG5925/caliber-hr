@@ -164,6 +164,11 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   function renderTrainer() {
     const rows = waiting();
     const canEdit = role==='trainer' && !submittingResults;
+    for(const selector of ['#trResultPicker','#trVideoPicker']){
+      const picker=$<HTMLInputElement>(selector);
+      picker.disabled=!canEdit||!rows.length;
+      if(!rows.some(row=>row.id===picker.dataset.trialId))picker.dataset.trialId=rows[0]?.id||'';
+    }
     $('#trCount').textContent = rows.length ? `· ${rows.length} waiting` : '';
     $('#trList').innerHTML = trainerForms(rows,draftFor,canEdit,draftFiles,draftVideos,optimizingVideos);
     $('#trRoleWarn').hidden = role==='trainer';
@@ -692,11 +697,13 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     const row=waiting().find(item=>item.id===card?.dataset.id);
     if (!row) return;
     if (button.hasAttribute('data-choose-result-file')) {
-      card?.querySelector<HTMLInputElement>('[data-result-file]')?.click();
+      const picker=$<HTMLInputElement>('#trResultPicker');
+      picker.dataset.trialId=row.id;picker.click();
       return;
     }
     if (button.hasAttribute('data-choose-driving-video')) {
-      card?.querySelector<HTMLInputElement>('[data-driving-video]')?.click();
+      const picker=$<HTMLInputElement>('#trVideoPicker');
+      picker.dataset.trialId=row.id;picker.click();
       return;
     }
     if (button.hasAttribute('data-remove-result-file')) {
@@ -730,13 +737,13 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (field==='post') draft.post=post(input.value);
     else if(field==='machine'||field==='reason'||field==='remarks') draft[field]=input.value;
   };
-  $('#trList').onchange=async event=>{
+  const receiveTrialFile=async (event:Event)=>{
     const input=event.target as HTMLInputElement;
     const isResult=input.hasAttribute('data-result-file'),isVideo=input.hasAttribute('data-driving-video');
     if (role!=='trainer'||submittingResults||!isResult&&!isVideo) return;
     const file=input.files?.[0];
     input.value='';
-    const row=waiting().find(item=>item.id===input.closest<HTMLElement>('[data-id]')?.dataset.id);
+    const row=waiting().find(item=>item.id===input.dataset.trialId);
     if (!file||!row) return;
     if (!file.size) {
       toast(`The ${isVideo?'driving video':'trial result file'} is empty. Choose another file.`);
@@ -771,6 +778,8 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     renderTrainer();
     focusResultUpload(row.id,isVideo?'[data-choose-driving-video]':'[data-choose-result-file]');
   };
+  $('#trResultPicker').onchange=receiveTrialFile;
+  $('#trVideoPicker').onchange=receiveTrialFile;
   $('#trSubmit').onclick=()=>void submitResults();
 
   async function decide(approved: boolean, ids: string[], note: string) {
