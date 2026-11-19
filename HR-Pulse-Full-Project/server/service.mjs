@@ -2,6 +2,7 @@ import {createTelegram,telegramLeaveFlow,odSiteFlow,telegramSteps,queueTelegram,
 import {odApprovalWorkflow} from './out-duty.mjs';
 import {createTransferFlows,transferWorkflow,applyTransfer} from './employee-transfer-flow.mjs';
 import {createAssets} from './assets.mjs';
+import {payroll} from './payroll.mjs';
 import {createAttendance} from './attendance.mjs';
 import {createHierarchies,employeeHierarchy,approvalSteps,nextApproval,isDriverOperator} from './joining-hierarchy.mjs';
 import {createHolidayDocuments,holidayAliases} from './holiday-documents.mjs';
@@ -150,6 +151,7 @@ export function createService(pool,{telegram=createTelegramNotifier()}={}) {
         return {status:'PENDING'};
   }
   return {...createTelegram(pool),...createAssets(pool),...createAttendance(pool),...employeeDocuments,
+    payroll:(profile,method,params,input)=>transaction(db=>payroll(db,profile,method,params,input)),
     ...createDeletion(pool),
     ...createHierarchies(pool),
     ...createTransferFlows(pool),
