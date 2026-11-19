@@ -38,6 +38,7 @@ export type Trial = Candidate & {
 export type Outcome = {
   result: Result; post: Post; machine: string; reason: string; trainer: string; remarks: string;
   attachment?: {id: string; name: string};
+  videoAttachment?: {id: string; name: string};
 };
 export const isClearedForJoining = (row: Trial): row is Trial & {stage: 'done'; result: 'PASS'; outcome: NonNullable<Trial['outcome']>} =>
   row.stage === 'done' && row.result === 'PASS' && (row.outcome?.post === 'Driver' || row.outcome?.post === 'Operator');

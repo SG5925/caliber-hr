@@ -15,7 +15,7 @@ export function overviewTable(records: Trial[], canOpenJoining = false) {
     <td>${esc(row.post)}</td><td>${esc(equipment(row))}</td><td>${esc(row.experience)}${row.experience?' yrs':''}</td>
     <td>${esc(row.referredBy)}</td><td>${esc(dateTime(row.trialDate))}</td><td>${resultPill(row)}</td><td>${stagePill(row)}${canOpenJoining&&isClearedForJoining(row)?` <button type="button" class="btn pri sm" data-join-trial="${esc(row.id)}" aria-label="Open Step 2 for ${esc(row.name)}">Open Step 2</button>`:''}</td></tr>`).join(''));
 }
-function resultFields(id: string, name: string, draft?: Outcome, allowed = false, file?: File) {
+function resultFields(id: string, name: string, draft?: Outcome, allowed = false, file?: File, video?: File) {
   const prefix = name ? esc(name) + ': ' : '';
   const disabled = allowed ? '' : 'disabled';
   const passDisabled = allowed && draft?.result === 'PASS' ? '' : 'disabled';
@@ -31,10 +31,15 @@ function resultFields(id: string, name: string, draft?: Outcome, allowed = false
   ).join('');
   return `<div class="rows trainer-fields">
     ${row('Trial result file', `
-      <button type="button" class="btn pri" data-choose-result-file aria-label="${prefix}${file?'Replace trial result file':'Upload trial result'}" ${disabled}>${file?'Replace file':'Upload trial result'}</button>
+      <span class="trial-upload-actions">
+        <button type="button" class="btn pri" data-choose-result-file aria-label="${prefix}${file?'Replace trial result file':'Upload trial result'}" ${disabled}>${file?'Replace file':'Upload trial result'}</button>
+        <button type="button" class="btn pri" data-choose-driving-video aria-label="${prefix}${video?'Replace driving video':'Upload Driving Video'}" ${disabled}>${video?'Replace video':'Upload Driving Video'}</button>
+      </span>
       <input type="file" data-result-file accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" ${disabled} hidden>
-      <span class="note">Optional · PDF, JPG or PNG</span>
-      ${file ? `<span class="trial-result-filename" role="status">${esc(file.name)}</span><button type="button" class="btn sm" data-remove-result-file ${disabled}>Remove file</button>` : ''}`)}
+      <input type="file" data-driving-video accept=".mp4,.webm,.mov,video/mp4,video/webm,video/quicktime" ${disabled} hidden>
+      <span class="note">Optional · Result: PDF, JPG or PNG · Video: MP4, WebM or MOV (max 3 MB)</span>
+      ${file ? `<span class="trial-result-filename" role="status">${esc(file.name)}</span><button type="button" class="btn sm" data-remove-result-file ${disabled}>Remove file</button>` : ''}
+      ${video ? `<span class="trial-result-filename" role="status">${esc(video.name)}</span><button type="button" class="btn sm" data-remove-driving-video ${disabled}>Remove video</button>` : ''}`)}
     ${row('Result', `<div class="pf">${resultButtons}</div>`)}
     ${row('If PASS – recommended for', `
       <div class="recommended-post" role="group" aria-label="${prefix}Recommended post">${posts}</div>
@@ -44,7 +49,7 @@ function resultFields(id: string, name: string, draft?: Outcome, allowed = false
     ${row('Examiner remarks', `<input type="text" data-f="remarks" aria-label="${prefix}Examiner remarks" value="${esc(draft?.remarks)}" ${disabled}>`)}
   </div>`;
 }
-export function trainerForms(records: Trial[], draftFor: (row: Trial) => Outcome, allowed: boolean, files: ReadonlyMap<string, File>) {
+export function trainerForms(records: Trial[], draftFor: (row: Trial) => Outcome, allowed: boolean, files: ReadonlyMap<string, File>, videos: ReadonlyMap<string, File>) {
   if (!records.length) {
     return `<p class="note trainer-empty">Submit a candidate in Part 1 to enable the trial result upload.</p>${resultFields('empty','')}`;
   }
@@ -57,7 +62,7 @@ export function trainerForms(records: Trial[], draftFor: (row: Trial) => Outcome
         <span class="small">${esc(equipment(row))} · ${esc(dateTime(row.trialDate))}${row.experience?' · '+esc(row.experience)+' yrs':''}</span>
         <span class="muted small">${checks.map(([label,check])=>label+(check.seen==='Yes'?' ✓':' –')).join(' · ')}</span>
       </div>
-      ${resultFields(row.id,row.name,draftFor(row),allowed,files.get(row.id))}
+      ${resultFields(row.id,row.name,draftFor(row),allowed,files.get(row.id),videos.get(row.id))}
     </article>`;
   }).join('');
 }
@@ -100,7 +105,7 @@ export function detailView(row: Trial, role: Role, canOpenJoining = false) {
     <div class="rows" style="border:1px solid var(--line-strong)">${item('Result',resultPill(row))}${section([
       ['If PASS – recommended for',out && row.result==='PASS'?[out.post,out.machine].filter(Boolean).join(' – '):''],['If FAIL – reason',out?.reason||''],
       ['Trial conducted by',out?.trainer||''],['Examiner remarks',out?.remarks||''],
-    ])}${out?.attachment ? item('Trial result file', `<button type="button" class="link trial-result-filename" data-download-result>Download ${esc(out.attachment.name)}</button>`) : ''}</div>
+    ])}${out?.attachment ? item('Trial result file', `<button type="button" class="link trial-result-filename" data-download-result>Download ${esc(out.attachment.name)}</button>`) : ''}${out?.videoAttachment ? item('Driving video', `<button type="button" class="link trial-result-filename" data-download-driving-video>Download ${esc(out.videoAttachment.name)}</button>`) : ''}</div>
     <div class="secbar">Approvals</div><div class="sigs">${signs}</div>
     ${row.history.filter(h=>h.note).map(h=>`<p class="note"><b>${esc(ROLES[h.role])} (${esc(h.by)}):</b> ${esc(h.note)}</p>`).join('')}
     ${row.stage===role && ['pm','ohr','rhr','director'].includes(role) ? `<div class="actions"><input id="mNote" aria-label="Decision note" placeholder="Note (required to reject)"><button type="button" class="btn no" data-decide="reject">Reject</button><button type="button" class="btn ok" data-decide="approve">Approve as ${ROLES[role]}</button></div>`:''}`;

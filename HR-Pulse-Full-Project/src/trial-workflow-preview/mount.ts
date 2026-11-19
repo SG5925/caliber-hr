@@ -46,6 +46,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   const defaults = () => post(scope.department);
   const drafts = new Map<string,Outcome>();
   const draftFiles = new Map<string,File>();
+  const draftVideos = new Map<string,File>();
   const selected = new Set<string>();
   const effects = new AbortController();
   let tab: Tab = 'aadhaar', role: Role = 'hr', stageFilter = '', records: Trial[] = [], bulk = Array.from({length:3},blankBulkRow);
@@ -157,7 +158,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     const rows = waiting();
     const canEdit = role==='trainer' && !submittingResults;
     $('#trCount').textContent = rows.length ? `· ${rows.length} waiting` : '';
-    $('#trList').innerHTML = trainerForms(rows,draftFor,canEdit,draftFiles);
+    $('#trList').innerHTML = trainerForms(rows,draftFor,canEdit,draftFiles,draftVideos);
     $('#trRoleWarn').hidden = role==='trainer';
     $('#trSubmit').textContent = submittingResults ? 'Saving results…' : 'Submit results → send to PM';
     for (const selector of ['#trAllPass','#trSubmit']) $<HTMLButtonElement>(selector).disabled = !canEdit||!rows.length;
@@ -583,15 +584,20 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
       const file = draftFiles.get(row.id);
       return file ? [[row.id,{id:crypto.randomUUID(),file}] as const] : [];
     }));
-    if (files.size) {
+    const videos = new Map(rows.flatMap(row=>{
+      const file = draftVideos.get(row.id);
+      return file ? [[row.id,{id:crypto.randomUUID(),file}] as const] : [];
+    }));
+    const storedFiles=[...files.values(),...videos.values()];
+    if (storedFiles.length) {
       submittingResults = true;
       $<HTMLSelectElement>('#role').disabled = true;
       renderTrainer();
       try {
-        await saveTrialResultFiles([...files.values()]);
+        await saveTrialResultFiles(storedFiles);
       } catch {
         if (!effects.signal.aborted) {
-          toast('Could not save the trial result file. Check browser storage or remove the file and try again.');
+          toast('Could not save the trial result files. Check browser storage or remove a file and try again.');
         }
         return;
       } finally {
@@ -606,37 +612,41 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
         if(!ids.has(row.id)) return row;
         const d=drafts.get(row.id)!;
         const attachment=files.get(row.id);
+        const videoAttachment=videos.get(row.id);
         const next: Trial={...row,stage:'pm',result:d.result,outcome:{
           ...d,machine:d.result==='PASS'?d.machine.trim():'',reason:d.result==='FAIL'?d.reason.trim():'',
           remarks:d.remarks.trim(),trainer:d.trainer.trim()||name,at,
           attachment:attachment && {id:attachment.id,name:attachment.file.name},
+          videoAttachment:videoAttachment && {id:videoAttachment.id,name:videoAttachment.file.name},
         },history:[...row.history,{role:'trainer',action:'Trial result: '+d.result,by:name,at}]};
         changed.push(next);
         return next;
       });
     });
     if (!committed) {
-      if (files.size) await removeTrialResultFiles([...files.values()].map(file=>file.id)).catch(()=>{});
+      if (storedFiles.length) await removeTrialResultFiles(storedFiles.map(file=>file.id)).catch(()=>{});
       return;
     }
     for (const id of ids) {
       drafts.delete(id);
       draftFiles.delete(id);
+      draftVideos.delete(id);
     }
     const passed=changed.filter(row=>row.result==='PASS');
     toast(`${changed.length} results sent to PM – ${passed.length} pass, ${changed.length-passed.length} fail.`);
     const resultFiles=new Map<string,File|undefined>();for(const row of changed) resultFiles.set(row.id,files.get(row.id)?.file);
+    const drivingVideos=new Map<string,File|undefined>();for(const row of changed) drivingVideos.set(row.id,videos.get(row.id)?.file);
     if (!savedSession()?.grant) {if(passed.length) showTelegram(passed.map(resultMessage),'Trial PASS – sent to PM for approval');return;}
-    void sendResults(changed,resultFiles,name,scope)
+    void sendResults(changed,resultFiles,drivingVideos,name,scope)
       .then(d=>{if(!effects.signal.aborted) showTelegram([d.message],changed.length>1?`Batch result – sent to PM (Excel sheet + attachments)`:'Trial result – sent to PM for approval',undefined,deliveryStatus(d));})
       .catch(error=>{if(!effects.signal.aborted){toast('Telegram: '+(error instanceof Error?error.message:'could not send'));if(passed.length) showTelegram(passed.map(resultMessage),'Trial PASS – sent to PM for approval');}});
   }
-  function focusResultUpload(id: string) {
-    $$<HTMLButtonElement>('#trList [data-choose-result-file]').find(button=>
+  function focusResultUpload(id: string, selector='[data-choose-result-file]') {
+    $$<HTMLButtonElement>('#trList '+selector).find(button=>
       button.closest<HTMLElement>('[data-id]')?.dataset.id===id)?.focus();
   }
   $('#trList').onclick=event=>{
-    const button=(event.target as Element).closest<HTMLButtonElement>('[data-res],[data-choose-result-file],[data-remove-result-file]');
+    const button=(event.target as Element).closest<HTMLButtonElement>('[data-res],[data-choose-result-file],[data-remove-result-file],[data-choose-driving-video],[data-remove-driving-video]');
     if (!button || role!=='trainer' || submittingResults) return;
     const card=button.closest<HTMLElement>('[data-id]');
     const row=waiting().find(item=>item.id===card?.dataset.id);
@@ -645,10 +655,20 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
       card?.querySelector<HTMLInputElement>('[data-result-file]')?.click();
       return;
     }
+    if (button.hasAttribute('data-choose-driving-video')) {
+      card?.querySelector<HTMLInputElement>('[data-driving-video]')?.click();
+      return;
+    }
     if (button.hasAttribute('data-remove-result-file')) {
       draftFiles.delete(row.id);
       renderTrainer();
       focusResultUpload(row.id);
+      return;
+    }
+    if (button.hasAttribute('data-remove-driving-video')) {
+      draftVideos.delete(row.id);
+      renderTrainer();
+      focusResultUpload(row.id,'[data-choose-driving-video]');
       return;
     }
     const result=button.dataset.res;
@@ -672,22 +692,32 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   };
   $('#trList').onchange=event=>{
     const input=event.target as HTMLInputElement;
-    if (role!=='trainer'||submittingResults||!input.hasAttribute('data-result-file')) return;
+    const isResult=input.hasAttribute('data-result-file'),isVideo=input.hasAttribute('data-driving-video');
+    if (role!=='trainer'||submittingResults||!isResult&&!isVideo) return;
     const file=input.files?.[0];
     input.value='';
     const row=waiting().find(item=>item.id===input.closest<HTMLElement>('[data-id]')?.dataset.id);
     if (!file||!row) return;
-    if (!/\.(pdf|jpe?g|png)$/i.test(file.name) || (file.type && !['application/pdf','image/jpeg','image/png'].includes(file.type))) {
-      toast('Choose a PDF, JPG or PNG trial result file.');
-      return;
-    }
     if (!file.size) {
-      toast('The trial result file is empty. Choose another file.');
+      toast(`The ${isVideo?'driving video':'trial result file'} is empty. Choose another file.`);
       return;
     }
-    draftFiles.set(row.id,file);
+    if(isVideo){
+      if (!/\.(mp4|webm|mov)$/i.test(file.name) || (file.type && !['video/mp4','video/webm','video/quicktime'].includes(file.type))) {
+        toast('Choose an MP4, WebM or MOV driving video.');
+        return;
+      }
+      if(file.size>3*1024*1024){toast('The driving video must be 3 MB or smaller.');return;}
+      draftVideos.set(row.id,file);
+    } else {
+      if (!/\.(pdf|jpe?g|png)$/i.test(file.name) || (file.type && !['application/pdf','image/jpeg','image/png'].includes(file.type))) {
+        toast('Choose a PDF, JPG or PNG trial result file.');
+        return;
+      }
+      draftFiles.set(row.id,file);
+    }
     renderTrainer();
-    focusResultUpload(row.id);
+    focusResultUpload(row.id,isVideo?'[data-choose-driving-video]':'[data-choose-result-file]');
   };
   $('#trAllPass').onclick=()=>{
     if(role!=='trainer'||submittingResults) return;
@@ -785,6 +815,10 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     }
     if(target.hasAttribute('data-download-result')){
       const attachment=records.find(row=>row.id===detailId)?.outcome?.attachment;
+      if (attachment) void downloadTrialResult(attachment);
+    }
+    if(target.hasAttribute('data-download-driving-video')){
+      const attachment=records.find(row=>row.id===detailId)?.outcome?.videoAttachment;
       if (attachment) void downloadTrialResult(attachment);
     }
     if(target.id==='mTelegram'){

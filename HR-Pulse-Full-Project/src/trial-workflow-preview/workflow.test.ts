@@ -225,6 +225,7 @@ describe('Trial workflow preview',()=>{
     const network = vi.spyOn(window,'fetch').mockRejectedValue(new Error('Network is disabled in the preview'));
     const saved = new Map<string,File>();
     const file = new File(['%PDF-1.7'],'signed-result.pdf',{type:'application/pdf'});
+    const video = new File(['video'],'driving-trial.mp4',{type:'video/mp4'});
     vi.spyOn(trialResultFiles,'saveTrialResultFiles')
       .mockRejectedValueOnce(new Error('Storage unavailable'))
       .mockImplementation(async attachments=>{for (const attachment of attachments) saved.set(attachment.id,attachment.file);});
@@ -240,6 +241,7 @@ describe('Trial workflow preview',()=>{
     expect(el('#trList [aria-label="PASS"]')).toBeDisabled();
     expect(el('#trList [aria-label="Trial conducted by"]')).toBeDisabled();
     expect(el('#trList [data-choose-result-file]')).toBeDisabled();
+    expect(el('#trList [data-choose-driving-video]')).toBeDisabled();
     change('#role','hr');
     click('[data-tab="overview"]');
     click('[data-go="hr"]');
@@ -259,8 +261,13 @@ describe('Trial workflow preview',()=>{
     change('#role','trainer');
     expect(el('[aria-label="Sample Pass: Trial conducted by"]')).toBeEnabled();
     expect(el('[aria-label="Sample Pass: Upload trial result"]')).toBeEnabled();
+    expect(el('[aria-label="Sample Pass: Upload Driving Video"]')).toBeEnabled();
+    expect(el('.trial-upload-actions')).toContainElement(el('[aria-label="Sample Pass: Upload trial result"]'));
+    expect(el('.trial-upload-actions')).toContainElement(el('[aria-label="Sample Pass: Upload Driving Video"]'));
     fireEvent.change(el('[data-result-file]'),{target:{files:[file]}});
+    fireEvent.change(el('[data-driving-video]'),{target:{files:[video]}});
     expect(el('#trList')).toHaveTextContent(file.name);
+    expect(el('#trList')).toHaveTextContent(video.name);
     click('#trAllPass');
     click('[aria-label="Sample Pass: Recommend Operator"]');
     input('[aria-label="Sample Pass: Machine"]','Sample excavator');
@@ -268,8 +275,9 @@ describe('Trial workflow preview',()=>{
     input('[aria-label="Sample Pass: Examiner remarks"]','Completed the inspection');
     click('#trSubmit');
     expect(el('#trSubmit')).toBeDisabled();
-    await waitFor(()=>expect(el('#toast')).toHaveTextContent('Could not save the trial result file'));
+    await waitFor(()=>expect(el('#toast')).toHaveTextContent('Could not save the trial result files'));
     expect(el('#trList')).toHaveTextContent(file.name);
+    expect(el('#trList')).toHaveTextContent(video.name);
     expect(el('#bTrainer')).toHaveTextContent('1');
     click('#trSubmit');
     await waitFor(()=>expect(el('#tgpop')).toHaveTextContent('Sent to PM for approval'));
@@ -302,10 +310,14 @@ describe('Trial workflow preview',()=>{
     expect(next.el('#ovList').textContent).toContain('Cleared to join');
     next.click('#ovList [data-open]');
     expect(next.el('[data-download-result]')).toHaveTextContent('Download signed-result.pdf');
+    expect(next.el('[data-download-driving-video]')).toHaveTextContent('Download driving-trial.mp4');
     next.click('[data-download-result]');
-    await waitFor(()=>expect(download).toHaveBeenCalledOnce());
+    next.click('[data-download-driving-video]');
+    await waitFor(()=>expect(download).toHaveBeenCalledTimes(2));
     expect(createUrl).toHaveBeenCalledWith(file);
+    expect(createUrl).toHaveBeenCalledWith(video);
     expect((download.mock.contexts[0] as HTMLAnchorElement).download).toBe(file.name);
+    expect((download.mock.contexts[1] as HTMLAnchorElement).download).toBe(video.name);
     const other = setup({site:'Another site'});
     other.click('[data-tab="overview"]');
     expect(other.el('#ovList').textContent).toContain('No trial forms yet');

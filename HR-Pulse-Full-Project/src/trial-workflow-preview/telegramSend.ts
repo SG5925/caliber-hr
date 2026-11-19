@@ -56,12 +56,12 @@ export async function sendPart1(created: Trial[], scope: TrialScope): Promise<De
   return out.telegram;
 }
 
-export async function sendResults(changed: Trial[], resultFiles: Map<string, File | undefined>, trialBy: string, scope: TrialScope): Promise<Delivery> {
+export async function sendResults(changed: Trial[], resultFiles: Map<string, File | undefined>, drivingVideos: Map<string, File | undefined>, trialBy: string, scope: TrialScope): Promise<Delivery> {
   const grant = grantOrThrow();
   const batchId = changed.length > 1 ? (changed[0].batch || 'B-'+changed[0].formNo.replace(/\W+/g,'').slice(-6).toUpperCase()) : '';
   const rows = await Promise.all(changed.map(async row => ({
     formNo: row.formNo, fields: fields(row),
-    attachments: [dataUrl('photo', row.photo), await fileAttachment(resultFiles.get(row.id))].filter(Boolean),
+    attachments: [dataUrl('photo', row.photo), await fileAttachment(resultFiles.get(row.id)), await fileAttachment(drivingVideos.get(row.id))].filter(Boolean),
   })));
   if (!batchId) {
     const out = await api<{telegram: Delivery}>(grant, 'telegram/trial-result', 'POST', {
@@ -95,7 +95,7 @@ export async function sendApproval(changed: Trial[], reviewer: 'pm'|'ohr'|'rhr'|
   const rows = await Promise.all(changed.map(async row => ({
     formNo: row.formNo, fields: fields(row), history: row.history, trialBy: row.outcome?.trainer || '',
     docs: Object.fromEntries(Object.entries(row.docs || {}).map(([k, v]) => [k, (v as {seen: string}).seen])),
-    attachments: [dataUrl('photo', row.photo), await fileAttachment(row.outcome?.attachment ? await resultFiles(row.outcome.attachment.id) : undefined)].filter(Boolean),
+    attachments: [dataUrl('photo', row.photo), await fileAttachment(row.outcome?.attachment ? await resultFiles(row.outcome.attachment.id) : undefined), await fileAttachment(row.outcome?.videoAttachment ? await resultFiles(row.outcome.videoAttachment.id) : undefined)].filter(Boolean),
   })));
   let xlsx = '';
   if (approved && reviewer === 'director' && changed.length > 1) {
