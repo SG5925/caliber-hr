@@ -1,0 +1,7 @@
+.payroll-print { display: none; }
+@media print {
+  body:has(> .payroll-print) > :not(.payroll-print) { display: none !important; }
+  .payroll-print { display: block; color: black; padding: 1rem; font: 11pt Arial, sans-serif; }
+  .payroll-print th, .payroll-print td { padding: 5pt; }
+  .payroll-print td { text-align: right; }
+}
