@@ -44,6 +44,7 @@ export default function AttendanceManagement({grant}:{grant:string}){
  const [error,setError]=useState(''),[message,setMessage]=useState('');
  const [tab,setTab]=useState<'module'|'punches'|'mis'|'machines'>('module');
  const [selected,setSelected]=useState('');
+ const [adding,setAdding]=useState(false);
  const [site,setSite]=useState('');
  const live=useRef(true);
  const attendanceFrame=useRef<HTMLIFrameElement>(null);
@@ -173,7 +174,25 @@ export default function AttendanceManagement({grant}:{grant:string}){
   </>}
   {tab==='machines'&&status&&<div className="data-card">
    <h2>Biometric machines</h2>
-   {status.canManageDevices&&<label>Site <select value={site} onChange={e=>setSite(e.target.value)}><option value="">Select a site</option>{sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}<option value="unassigned">Unassigned machines</option></select></label>}
+   {status.canManageDevices&&<label>Site <select value={site} disabled={busy} onChange={e=>{setAdding(false);setSite(e.target.value);}}><option value="">Select a site</option>{sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}<option value="unassigned">Unassigned machines</option></select></label>}
+   {status.canManageDevices&&<div className="attendance-actions">
+    <button type="button" disabled={!site||site==='unassigned'||busy} onClick={()=>{setAdding(true);setError('');setMessage('');}}>Add machine</button>
+   </div>}
+   {adding&&status.canManageDevices&&site&&site!=='unassigned'&&<form className="attendance-filters" onSubmit={async e=>{
+    e.preventDefault();if(busy)return;
+    const fields=new FormData(e.currentTarget);
+    const serial=String(fields.get('serial')||'').trim();
+    setBusy(true);setError('');setMessage('');
+    try{
+     await api(grant,'attendance/devices/register','POST',{serial,name:fields.get('name'),siteId:site});
+     setAdding(false);setMessage('Machine '+serial+' registered. It will show its status after the bridge receives contact.');await load(false);
+    }catch(err){setError((err as Error).message);}finally{setBusy(false);}
+   }}>
+    <label>Machine serial number<input name="serial" required autoFocus maxLength={40} placeholder="Serial printed on the machine"/></label>
+    <label>Machine name (optional)<input name="name" maxLength={80}/></label>
+    <button className="primary" disabled={busy}>Save machine</button>
+    <button type="button" disabled={busy} onClick={()=>setAdding(false)}>Cancel</button>
+   </form>}
    <div className="attendance-table"><table>
     <thead><tr>{['Serial number','Site','Status','Last contact','Action'].map(x=><th key={x}>{x}</th>)}</tr></thead>
     <tbody>{status.devices.filter(d=>!status.canManageDevices||site===(d.siteId||'unassigned')).map(d=><tr key={d.serial}>

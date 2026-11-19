@@ -184,16 +184,22 @@ export function createAttendance(pool,{bridgeKey=process.env.ATTENDANCE_BRIDGE_K
     return {linked:true,employeeCode:employee.code,employeeName:employee.name};
    });
   }
-  if(route==='devices'&&method==='POST'){
+  if((route==='devices'||route==='devices/register')&&method==='POST'){
    if(assignedSites(profile)!==null||!canWrite(profile,'employees'))fail('Only an HR administrator without site restrictions can assign devices',403);
    const serial=String(input.serial||''),siteId=String(input.siteId||''),name=String(input.name||'').replace(/[\u0000-\u001f]/g,'').trim().slice(0,80);
-   if(!SERIAL.test(serial))fail('Invalid device');
+   const register=route==='devices/register';
+   if(register&&!siteId)fail('Choose a site');
+   if(!SERIAL.test(serial))fail('Enter a valid machine serial number');
    if(siteId&&!uuid(siteId))fail('Choose a site');
    return tx(async db=>{
     if(siteId&&!(await db.query("SELECT 1 FROM hr_records WHERE id=$1 AND kind='sites'",[siteId])).rowCount)fail('Site not found',404);
-    const row=(await db.query('UPDATE hr_attendance_devices SET site_id=$2,name=$3 WHERE serial=$1 RETURNING serial',[serial,siteId||null,name])).rows[0];
+    const statement=register
+     ? 'INSERT INTO hr_attendance_devices(serial,site_id,name) VALUES($1,$2,$3) ON CONFLICT(serial) DO NOTHING RETURNING serial'
+     : 'UPDATE hr_attendance_devices SET site_id=$2,name=$3 WHERE serial=$1 RETURNING serial';
+    const row=(await db.query(statement,[serial,siteId||null,name])).rows[0];
+    if(!row&&register)fail('This serial number is already listed. Use its existing row to assign the site.',409);
     if(!row)fail('Device not found',404);
-    await audit(db,profile.actor,'ASSIGN_ATTENDANCE_DEVICE',{serial,siteId,name});
+    await audit(db,profile.actor,register?'REGISTER_ATTENDANCE_DEVICE':'ASSIGN_ATTENDANCE_DEVICE',{serial,siteId,name});
     return {serial,siteId,name};
    });
   }
