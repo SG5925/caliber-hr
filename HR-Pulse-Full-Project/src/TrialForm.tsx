@@ -13,7 +13,7 @@ import type {Trial} from './trial-workflow-preview/records';
 const TrialWorkflowPreview=lazy(()=>import('./trial-workflow-preview/TrialWorkflowPreview'));
 
 /* Trial Joining Form – Driver & Operator. Mirrors Trial_Joining_Form_Driver_Operator.docx.
-   Shown under Employee Master when the top bar's department is Driver or Operator. */
+   Shown under Employee Master whenever the OB / COAL employee group is selected. */
 export type TrialSelection={employeeGroup:'Corporate / HO'|'OB / COAL';company:string;region:string;site:string;department:string;subdepartment:string;designation:string};
 const SELECTION_KEY='hrPulse.employeeSelection',DRAFT_KEY='hrPulse.trialForm',COUNTER_KEY='hrPulse.trialForm.counter';
 const DRAFTS_KEY=DRAFT_KEY+'.drafts';
@@ -27,7 +27,7 @@ const companyShort:Record<string,string>={'Caliber Mining And Logistics Ltd':'CM
 export const emptySelection:TrialSelection={employeeGroup:'Corporate / HO',company:'',region:'',site:'',department:'',subdepartment:'',designation:''};
 export function loadSelection():TrialSelection{try{return {...emptySelection,...JSON.parse(localStorage.getItem(SELECTION_KEY)||sessionStorage.getItem(SELECTION_KEY)||'{}')};}catch{return emptySelection;}}
 export function saveSelection(selection:TrialSelection){try{localStorage.setItem(SELECTION_KEY,JSON.stringify(selection));}catch{/* storage unavailable */}}
-export const showsTrialForm=(selection:TrialSelection)=>['Driver','Operator'].includes(selection.department);
+export const showsTrialForm=(selection:TrialSelection)=>selection.employeeGroup==='OB / COAL';
 function fiscalYear(){const d=new Date(),start=d.getMonth()<3?d.getFullYear()-1:d.getFullYear();return `${start}-${String(start+1).slice(-2)}`;}
 function nextFormNo(){let n=0;try{n=Number(localStorage.getItem(COUNTER_KEY)||0)+1;localStorage.setItem(COUNTER_KEY,String(n));}catch{n=Date.now()%10000;}return `TF/${fiscalYear()}/${String(n).padStart(4,'0')}`;}
 const digits=(v:string,max:number)=>v.replace(/\D/g,'').slice(0,max);

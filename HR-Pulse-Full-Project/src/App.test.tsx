@@ -18,7 +18,7 @@ it('opens the full trial workflow directly from the Trial Form menu',async()=>{
  sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43),profile}));
  vi.stubGlobal('fetch',async()=>Response.json({profile,modules:{}}));
  const {container}=render(<App/>);
- fireEvent.change(await screen.findByRole('combobox',{name:/^Department$/}),{target:{value:'Driver'}});
+ fireEvent.click(await screen.findByRole('button',{name:'OB / COAL'}));
  fireEvent.click(await screen.findByRole('button',{name:/^Trial Form$/}));
  await screen.findByRole('button',{name:'Upload Aadhaar Image 1'});
  expect(screen.queryByRole('group',{name:'Trial Form views'})).toBeNull();
