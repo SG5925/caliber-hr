@@ -21,6 +21,7 @@ it('opens the full trial workflow directly from the Trial Form menu',async()=>{
  fireEvent.click((await screen.findAllByRole('button',{name:'OB / COAL'}))[0]);
  fireEvent.click(await screen.findByRole('button',{name:/^Trial Form$/}));
  await screen.findByRole('button',{name:'Upload Aadhar Image'},{timeout:5000});
+ expect(container.querySelector('[aria-label="Trial workflow local preview"]')?.shadowRoot?.querySelector('#myName')).toHaveValue('HR user');
  expect(screen.queryByRole('group',{name:'Trial Form views'})).toBeNull();
  const preview=container.querySelector('[aria-label="Trial workflow local preview"]')?.shadowRoot;
  expect(preview?.querySelector('#tabs button[aria-pressed="true"]')).toHaveTextContent('Upload Aadhaar');
