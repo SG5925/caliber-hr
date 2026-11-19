@@ -3,7 +3,7 @@ import {act,fireEvent,render,waitFor} from '@testing-library/react';
 import {createElement} from 'react';
 import {utils,write} from 'xlsx';
 import TrialWorkflowPreview from './TrialWorkflowPreview';
-import type {PrepareJoining} from './mount';
+import {sameDocumentHolder,type PrepareJoining} from './mount';
 import * as trialResultFiles from './trialResultFiles';
 import type {Trial} from './records';
 
@@ -34,6 +34,11 @@ afterEach(()=>{
 });
 
 describe('Trial workflow preview',()=>{
+  it('requires the Aadhaar and driving licence holder names to match',()=>{
+    expect(sameDocumentHolder('Sample Candidate',' sample   candidate ')).toBe(true);
+    expect(sameDocumentHolder('Sample Candidate','Different Candidate')).toBe(false);
+    expect(sameDocumentHolder('','Sample Candidate')).toBe(false);
+  });
   it('scans Aadhaar with the signed-in session and fills only empty candidate fields',async()=>{
     const grant = 'a'.repeat(43);
     sessionStorage.setItem('hrPulseSession', JSON.stringify({grant}));
@@ -44,7 +49,7 @@ describe('Trial workflow preview',()=>{
     const scan = vi.spyOn(window,'fetch')
       .mockResolvedValueOnce(Response.json({details}))
       .mockResolvedValueOnce(Response.json({matches:[]}))
-      .mockResolvedValueOnce(Response.json({details:{licenceNumber:'DL-123',classDetails:[
+      .mockResolvedValueOnce(Response.json({details:{name:'Sample Candidate',licenceNumber:'DL-123',classDetails:[
         {code:'HMV',issuedBy:'MH29',dateOfIssue:'2020-01-02',vehicleCategory:'TR',badgeNumber:'298/PSV/12',badgeIssuedDate:'2021-03-04',badgeIssuedBy:'MH29'},
         {code:'LMV',issuedBy:'MH29',dateOfIssue:'2020-02-03',vehicleCategory:'NT',badgeNumber:'',badgeIssuedDate:'',badgeIssuedBy:''},
       ],issueDate:'2020-01-02',validUpto:['2027-01-02','2030-01-02']}}));
