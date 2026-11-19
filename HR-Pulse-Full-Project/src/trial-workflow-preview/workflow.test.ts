@@ -65,6 +65,8 @@ describe('Trial workflow preview',()=>{
     fireEvent.change(getByLabelText('Choose front driving licence image'),{target:{files:[file]}});
     expect(el('#aadhaarContinue')).toBeDisabled();
     fireEvent.change(getByLabelText('Choose back driving licence image'),{target:{files:[file]}});
+    expect(getByLabelText('Uploaded front driving licence PDF preview')).toBeInTheDocument();
+    expect(getByLabelText('Uploaded back driving licence PDF preview')).toBeInTheDocument();
     await waitFor(()=>expect(el('#f_dl')).toHaveValue('DL-123 – HMV – LMV'));
     click('#aadhaarContinue');
     expect(el('#v-hr').hidden).toBe(false);
