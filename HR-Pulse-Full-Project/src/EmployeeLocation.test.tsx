@@ -424,6 +424,7 @@ describe('Employee Master tabs',()=>{
   expect((screen.getByLabelText('Qualification 1') as HTMLInputElement).placeholder).toBe('Enter qualification');
   await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Family Details/}));});
   expect(screen.queryByLabelText('Marital Status')).toBeNull();
+  expect(screen.queryByLabelText('Dependent? (Y/N) 1')).toBeNull();
   expect(screen.getByLabelText('Family Member Name 1')).toBeTruthy();
   for(let row=1;row<=5;row++)expect(Array.from((screen.getByLabelText('Relationship '+row) as HTMLSelectElement).options,option=>option.text)).toEqual(['Select relationship','Mother','Father','Wife','Spouse','Son','Daughter']);
   fireEvent.change(screen.getByLabelText('Relationship 1'),{target:{value:'Mother'}});
@@ -566,7 +567,7 @@ describe('Employee Master tabs',()=>{
   fireEvent.change(screen.getByLabelText('Sub-department',{exact:true,selector:'select:not([name])'}),{target:{value:'Drilling'}});
   fireEvent.change(screen.getByLabelText('Designation',{exact:true,selector:'select:not([name])'}),{target:{value:'Drill Operator'}});
   for(const [field,value] of Object.entries({'Identification Mark':'Mole on left hand','Full Name as per Aadhaar':'Employee One','Father / Spouse Name':'Parent One','Aadhaar No.':'234500000000','Full Name':'Employee One','Employee Code':'EMP-1','Mobile':'9876543210','Candidate E-mail':'employee@example.com','PAN No.':'ABCDE1234F','Present Address':'Nagpur','Reference Type':'Supervisor','Reference Name':'Supervisor One','Emergency Contact Name':'Contact One','Emergency Contact Number':'9876543211','Reporting To':'Manager','Joining Date':'2026-11-12','Shift':'General','Employment Type':'Permanent','Salary Type':'STD','Monthly Gross Salary':'30000','Site / Project':'Majri OB'}))setField(field,value);
-  for(const [field,value] of Object.entries({'Family Member Name 1':'Parent One','Relationship 1':'Mother','Date of Birth 1':'1970-01-01','Contact No. 1':'9876543212','Occupation 1':'Home','Dependent? (Y/N) 1':'Y'}))setField(field,value);
+  for(const [field,value] of Object.entries({'Family Member Name 1':'Parent One','Relationship 1':'Mother','Date of Birth 1':'1970-01-01','Contact No. 1':'9876543212','Occupation 1':'Home'}))setField(field,value);
   upload('Upload Family Aadhaar 1','family-aadhaar.pdf','application/pdf');
   fireEvent.click(screen.getByRole('button',{name:/Document Checklist/}));
   upload('Upload Candidate photo','photo.jpg','image/jpeg');
