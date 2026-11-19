@@ -50,7 +50,7 @@ describe('Trial workflow preview',()=>{
     input('#f_name','Verified Name');
     click('[data-tab="aadhaar"]');
     const file = new File(['%PDF-1.7'],'sample-aadhaar.pdf',{type:'application/pdf'});
-    fireEvent.click(getByRole('button',{name:'Upload Aadhar Front Image'}));
+    fireEvent.click(getByRole('button',{name:'Upload Aadhar Image'}));
     expect(getByRole('button',{name:'Camera'})).toBeEnabled();
     expect(getByRole('button',{name:'Gallery / Document'})).toBeEnabled();
     fireEvent.change(getByLabelText('Choose Aadhaar card from gallery'),{target:{files:[file]}});
@@ -75,19 +75,19 @@ describe('Trial workflow preview',()=>{
     expect(localStorage.length).toBe(0);
 
     click('[data-tab="aadhaar"]');
-    fireEvent.change(getByLabelText('Choose second Aadhaar image'),{target:{files:[file]}});
-    await waitFor(()=>expect(getByRole('status')).toHaveTextContent('The card could not be read.'));
+    fireEvent.change(getByLabelText('Choose Driving License'),{target:{files:[file]}});
+    expect(getByRole('status')).toHaveTextContent('Driving License uploaded.');
     expect(getByLabelText('Uploaded Aadhaar image 1 PDF preview')).toBeInTheDocument();
-    expect(getByLabelText('Uploaded Aadhaar image 2 PDF preview')).toBeInTheDocument();
-    fireEvent.click(getByRole('button',{name:'Remove Image 2'}));
-    expect(getByRole('status')).toHaveTextContent('Aadhaar image 2 removed');
+    expect(getByLabelText('Uploaded Driving License PDF preview')).toBeInTheDocument();
+    fireEvent.click(getByRole('button',{name:'Remove Driving License'}));
+    expect(getByRole('status')).toHaveTextContent('Driving License removed');
     expect(el('#f_aadhaar')).toHaveValue(details.uid);
     expect(el('#sSubmit')).toBeEnabled();
     click('#sReset');
-    expect(getByLabelText('Choose second Aadhaar image')).toBeEnabled();
-    expect(getByRole('button',{name:'Upload Aadhar Front Image'})).toBeEnabled();
+    expect(getByLabelText('Choose Driving License')).toBeEnabled();
+    expect(getByRole('button',{name:'Upload Aadhar Image'})).toBeEnabled();
     change('#role','trainer');
-    expect(getByLabelText('Choose second Aadhaar image')).toBeDisabled();
+    expect(getByLabelText('Choose Driving License')).toBeDisabled();
   });
 
   it.each([

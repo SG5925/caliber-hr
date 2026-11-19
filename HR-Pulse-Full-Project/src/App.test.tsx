@@ -20,7 +20,7 @@ it('opens the full trial workflow directly from the Trial Form menu',async()=>{
  const {container}=render(<App/>);
  fireEvent.click((await screen.findAllByRole('button',{name:'OB / COAL'}))[0]);
  fireEvent.click(await screen.findByRole('button',{name:/^Trial Form$/}));
- await screen.findByRole('button',{name:'Upload Aadhar Front Image'});
+ await screen.findByRole('button',{name:'Upload Aadhar Image'});
  expect(screen.queryByRole('group',{name:'Trial Form views'})).toBeNull();
  const preview=container.querySelector('[aria-label="Trial workflow local preview"]')?.shadowRoot;
  expect(preview?.querySelector('#tabs button[aria-pressed="true"]')).toHaveTextContent('Upload Aadhaar');
@@ -28,8 +28,8 @@ it('opens the full trial workflow directly from the Trial Form menu',async()=>{
  expect(stages).toHaveAttribute('hidden');
  expect(Array.from(stages?.querySelectorAll('.l')??[],label=>label.textContent))
   .toEqual(['Trial pending','Completed','Rejected']);
- expect(screen.getByRole('button',{name:'Upload Aadhar Front Image'})).toBeEnabled();
- expect(screen.getByRole('button',{name:'Upload Aadhar Back Image'})).toBeEnabled();
+ expect(screen.getByRole('button',{name:'Upload Aadhar Image'})).toBeEnabled();
+ expect(screen.getByRole('button',{name:'Upload Driving License'})).toBeEnabled();
  expect(Array.from(preview?.querySelectorAll('#tabs button')??[],button=>button.getAttribute('data-tab')))
   .toEqual(['aadhaar','hr','trainer','approve','overview']);
  for(const tab of ['hr','trainer','approve','overview']){
@@ -74,7 +74,7 @@ it('finds candidates saved under the original sign-in and current HR account key
  await screen.findAllByText('Configured HR user');
  fireEvent.click((await screen.findAllByRole('button',{name:'OB / COAL'}))[0]);
  fireEvent.click(await screen.findByRole('button',{name:'Trial Form'}));
- await screen.findByRole('button',{name:'Upload Aadhar Front Image'});
+ await screen.findByRole('button',{name:'Upload Aadhar Image'});
  const preview=container.querySelector('[aria-label="Trial workflow local preview"]')!.shadowRoot!;
  fireEvent.click(preview.querySelector('[data-tab="overview"]')!);
  expect(preview.querySelector('#ovList')).toHaveTextContent(trial.name);
