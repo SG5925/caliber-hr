@@ -44,8 +44,11 @@ describe('Trial workflow preview',()=>{
     const scan = vi.spyOn(window,'fetch')
       .mockResolvedValueOnce(Response.json({details}))
       .mockResolvedValueOnce(Response.json({matches:[]}))
-      .mockResolvedValueOnce(Response.json({details:{licenceNumber:'DL-123',classes:['HMV','LMV'],issueDate:'2020-01-02',validUpto:['2027-01-02','2030-01-02']}}));
-    const {el,click,input,getByLabelText,getByRole,change} = setup();
+      .mockResolvedValueOnce(Response.json({details:{licenceNumber:'DL-123',classDetails:[
+        {code:'HMV',issuedBy:'MH29',dateOfIssue:'2020-01-02',vehicleCategory:'TR',badgeNumber:'298/PSV/12',badgeIssuedDate:'2021-03-04',badgeIssuedBy:'MH29'},
+        {code:'LMV',issuedBy:'MH29',dateOfIssue:'2020-02-03',vehicleCategory:'NT',badgeNumber:'',badgeIssuedDate:'',badgeIssuedBy:''},
+      ],issueDate:'2020-01-02',validUpto:['2027-01-02','2030-01-02']}}));
+    const {root,el,click,input,getByLabelText,getByRole,change} = setup();
     click('[data-tab="hr"]');
     input('#f_name','Verified Name');
     click('[data-tab="aadhaar"]');
@@ -70,7 +73,7 @@ describe('Trial workflow preview',()=>{
     fireEvent.change(getByLabelText('Choose back driving licence image'),{target:{files:[file]}});
     expect(getByLabelText('Uploaded front driving licence PDF preview')).toBeInTheDocument();
     expect(getByLabelText('Uploaded back driving licence PDF preview')).toBeInTheDocument();
-    await waitFor(()=>expect(el('#f_dl')).toHaveValue('DL-123 – HMV – LMV'));
+    await waitFor(()=>expect(el('#f_dl')).toHaveValue('DL-123'));
     click('#aadhaarContinue');
     expect(el('#v-hr').hidden).toBe(false);
     expect(el('#v-aadhaar').hidden).toBe(true);
@@ -83,9 +86,12 @@ describe('Trial workflow preview',()=>{
     expect(el('#aadhaarHistory')).not.toBeVisible();
     expect(localStorage.length).toBe(0);
 
-    expect(el('#f_dl')).toHaveValue('DL-123 – HMV – LMV');
+    expect(el('#f_dl')).toHaveValue('DL-123');
     expect(el('#f_dlissue')).toHaveValue('2020-01-02');
-    expect(el('#f_dlvalid')).toHaveValue('2027-01-02, 2030-01-02');
+    expect(root.querySelectorAll('[data-dl-class-row]')).toHaveLength(2);
+    expect(el('[data-dl-class="code"]')).toHaveValue('HMV');
+    expect(el('[data-dl-class="badgeNumber"]')).toHaveValue('298/PSV/12');
+    expect([...root.querySelectorAll<HTMLInputElement>('[data-dl-valid]')].map(input=>input.value)).toEqual(['2027-01-02','2030-01-02']);
     click('[data-tab="aadhaar"]');
     expect(el('#f_aadhaar')).toHaveValue(details.uid);
     expect(el('#sSubmit')).toBeEnabled();

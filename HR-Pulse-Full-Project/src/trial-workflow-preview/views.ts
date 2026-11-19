@@ -77,6 +77,8 @@ export function detailView(row: Trial, role: Role, canOpenJoining = false) {
   const item = (label: string,value: string) => `<div class="row"><div class="k">${label}</div><div class="v">${value||'<span class="muted">–</span>'}</div></div>`;
   const section = (data: [string,string][])=>data.map(([label,value])=>item(label,esc(value))).join('');
   const out=row.outcome;
+  const dlClasses=(row.dlClasses||[]).map(item=>[item.code,item.issuedBy,item.dateOfIssue&&date(item.dateOfIssue),item.vehicleCategory,item.badgeNumber,item.badgeIssuedDate&&date(item.badgeIssuedDate),item.badgeIssuedBy].filter(Boolean).join(' · ')).join('; ');
+  const dlValidDates=(row.dlValidDates?.length?row.dlValidDates:row.dlValid.split(',')).map(value=>date(value.trim())).filter(Boolean).join('; ');
   const photo=/^data:image\/jpeg;base64,[\w+/=]+$/.test(row.photo) ? `<img src="${esc(row.photo)}" alt="Photo of ${esc(row.name)}" style="width:120px;height:150px;object-fit:cover;border-radius:6px">` : '<span class="muted small">No photo</span>';
   const signs = Object.entries(ROLES).map(([key,label])=>{
     const entry=[...row.history].reverse().find(h=>h.role===key);
@@ -89,7 +91,7 @@ export function detailView(row: Trial, role: Role, canOpenJoining = false) {
     <div class="secbar">Part 1 – Candidate details <em>Site HR</em></div>
     <div class="grid-form"><div class="rows">${section([
       ["Father's name",row.father],['Date of birth',date(row.dob)],['Mobile no.',row.mobile],['Aadhaar no.',row.aadhaar],['Address',row.address],
-      ['Post applied for',row.post],['Vehicle / equipment',equipment(row)],['DL no. &amp; class',row.dl],['DL issue date',date(row.dlIssue||'')],['DL valid up to',row.dlValid.split(',').map(value=>date(value.trim())).filter(Boolean).join(', ')],
+      ['Post applied for',row.post],['Vehicle / equipment',equipment(row)],['Driving licence no.',row.dl],['Class details',dlClasses],['DL issue date',date(row.dlIssue||'')],['DL valid up to',dlValidDates],
       ['Experience',row.experience?row.experience+' years':''],['Previous employer',row.employer],['Trial date &amp; time',dateTime(row.trialDate)],['Referred by',row.referredBy],
     ])}</div><div class="photo">${photo}</div></div>
     <div class="secbar">Document check</div>

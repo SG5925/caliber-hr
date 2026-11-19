@@ -24,9 +24,10 @@ export const DOCS = [
 export type Post = 'Driver' | 'Operator';
 export type Result = 'PASS' | 'FAIL' | '';
 export type Check = {seen: string; remarks: string};
+export type DrivingLicenceClass={code:string;issuedBy:string;dateOfIssue:string;vehicleCategory:string;badgeNumber:string;badgeIssuedDate:string;badgeIssuedBy:string};
 export type Candidate = {
   name: string; father: string; dob: string; mobile: string; aadhaar: string; address: string; photo: string;
-  post: Post; vehicles: string[]; otherVehicle: string; dl: string; dlIssue?: string; dlValid: string; experience: string;
+  post: Post; vehicles: string[]; otherVehicle: string; dl: string; dlClasses?:DrivingLicenceClass[];dlIssue?: string; dlValid: string;dlValidDates?:string[]; experience: string;
   employer: string; trialDate: string; referredBy: string; docs: Record<typeof DOCS[number][0],Check>;
 };
 export type History = {role: Role; action: string; by: string; at: string; note?: string};

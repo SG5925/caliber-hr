@@ -4,7 +4,7 @@ import {savedSession} from '../api';
 import {readGeminiAadhaar, type AadhaarDetails,type DrivingLicenceDetails} from '../geminiOcr';
 import {applyBulkAadhaar, blankBulkRow, bulkColumns, bulkConfirmations, downloadBulkWorkbook, hasBulkCandidate, readBulkWorkbook} from './bulkCandidates';
 import {candidateProblem, canApprove, date, DOCS, equipment, indiaDay, indiaTime, isClearedForJoining, licenceDate, localDateTime,
-  NEXT, nextNumber, post, resultMessage, ROLES, STAGES, VEHICLES, type Candidate, type Outcome, type Role, type Trial} from './records';
+  NEXT, nextNumber, post, resultMessage, ROLES, STAGES, VEHICLES, type Candidate, type DrivingLicenceClass, type Outcome, type Role, type Trial} from './records';
 import {approvalTable, detailView, esc, overviewTable, trainerForms} from './views';
 import {getTrialResultFile, removeTrialResultFiles, saveTrialResultFiles} from './trialResultFiles';
 import {deliveryStatus, fetchDecisions, sendApproval, sendPart1, sendResults, type TrialScope} from './telegramSend';
@@ -231,6 +231,8 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     resetAadhaarHistoryCheck();
     aadhaar.reset();
     $<HTMLFormElement>('#single').reset();
+    renderDrivingLicenceClasses([]);
+    renderDrivingLicenceValidDates([]);
     $$<HTMLInputElement>('#single input[data-aadhaar-locked]').forEach(control => { control.readOnly = false; delete control.dataset.aadhaarLocked; control.title = ''; });
     $('#photoBox').innerHTML = 'Upload photo<br><span class="muted">camera or gallery</span>';
     $('#f_vother').hidden = true;
@@ -249,10 +251,24 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   }
   function setDrivingLicenceBusy(busy:boolean){drivingLicenceBusy=busy;updateSingleActions();}
   function setDrivingLicenceReady(ready:boolean){drivingLicenceReady=ready;updateSingleActions();}
+  const dlClassFields: (keyof DrivingLicenceClass)[]=['code','issuedBy','dateOfIssue','vehicleCategory','badgeNumber','badgeIssuedDate','badgeIssuedBy'];
+  function renderDrivingLicenceClasses(rows:DrivingLicenceClass[]){
+    $('#f_dlclasses').innerHTML=(rows.length?rows:[{code:'',issuedBy:'',dateOfIssue:'',vehicleCategory:'',badgeNumber:'',badgeIssuedDate:'',badgeIssuedBy:''}]).map((row,index)=>
+      `<tr data-dl-class-row>${dlClassFields.map(field=>`<td><input type="${field==='dateOfIssue'||field==='badgeIssuedDate'?'date':'text'}" data-dl-class="${field}" aria-label="Driving licence class ${index+1} ${field}" value="${esc(row[field])}"></td>`).join('')}</tr>`
+    ).join('');
+  }
+  function renderDrivingLicenceValidDates(dates:string[]){
+    $('#f_dlvalids').innerHTML=(dates.length?dates:['']).map((value,index)=>`<input type="date" data-dl-valid aria-label="Driving licence valid up to ${index+1}" value="${esc(value)}">`).join('');
+  }
+  function drivingLicenceClasses(){
+    return $$<HTMLTableRowElement>('[data-dl-class-row]').map(row=>Object.fromEntries(dlClassFields.map(field=>[field,row.querySelector<HTMLInputElement>(`[data-dl-class="${field}"]`)?.value.trim()||''])) as DrivingLicenceClass).filter(row=>Object.values(row).some(Boolean));
+  }
+  function drivingLicenceValidDates(){return $$<HTMLInputElement>('[data-dl-valid]').map(input=>input.value).filter(Boolean);}
   function fillDrivingLicenceDetails(details:DrivingLicenceDetails){
-    $<HTMLInputElement>('#f_dl').value=[details.licenceNumber,...details.classes].filter(Boolean).join(' – ');
+    $<HTMLInputElement>('#f_dl').value=details.licenceNumber;
+    renderDrivingLicenceClasses(details.classDetails);
     $<HTMLInputElement>('#f_dlissue').value=details.issueDate;
-    $<HTMLInputElement>('#f_dlvalid').value=details.validUpto.join(', ');
+    renderDrivingLicenceValidDates(details.validUpto);
   }
   /* Values read from the Aadhaar card are locked: HR cannot retype them, only a new scan can replace them. */
   function lockScanned(control: HTMLInputElement) {
@@ -385,10 +401,11 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   $<HTMLFormElement>('#single').onsubmit=event=>{
     event.preventDefault();
     const vehicles=$$<HTMLInputElement>('input[name="f_vehicle"]:checked').map(input=>input.value);
+    const dlClasses=drivingLicenceClasses(),dlValidDates=drivingLicenceValidDates();
     if (createCandidates([{
       name:value('#f_name'),father:value('#f_father'),dob:value('#f_dob'),mobile:value('#f_mobile'),aadhaar:digits(value('#f_aadhaar')),
       address:value('#f_address'),photo,post:post(value('input[name="f_post"]:checked')),vehicles,
-      otherVehicle:vehicles.includes('Other')?value('#f_vother'):'',dl:value('#f_dl'),dlIssue:value('#f_dlissue'),dlValid:value('#f_dlvalid'),
+      otherVehicle:vehicles.includes('Other')?value('#f_vother'):'',dl:value('#f_dl'),dlClasses,dlIssue:value('#f_dlissue'),dlValid:dlValidDates.join(', '),dlValidDates,
       experience:value('#f_exp'),employer:value('#f_prev'),trialDate:value('#f_trial'),referredBy:value('#f_ref'),
       docs:Object.fromEntries(DOCS.map(([key])=>[key,check(value('#d_'+key),value('#dr_'+key))])) as Candidate['docs'],
     }],false)) resetSingle();

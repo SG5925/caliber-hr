@@ -10,11 +10,18 @@ export type Delivery = {message: string; recipients: number; connected: string[]
 export type TrialScope = {company: string; site: string; region: string; group: string; department: string};
 const target = ({site, region, group, company}: TrialScope) => ({site, region, group, company});
 type Attachment = {name: string; mime: string; data: string};
+const dlClassDetails = (row: Trial) => (row.dlClasses||[]).map(item=>[
+  `Class / Code: ${item.code||'–'}`,`Issued by: ${item.issuedBy||'–'}`,`Date of issue: ${item.dateOfIssue||'–'}`,
+  `Vehicle category: ${item.vehicleCategory||'–'}`,`Badge number: ${item.badgeNumber||'–'}`,
+  `Badge issued date: ${item.badgeIssuedDate||'–'}`,`Badge issued by: ${item.badgeIssuedBy||'–'}`,
+].join(' | ')).join('\n');
 
 const fields = (row: Trial): Record<string,string> => ({
   'Name of candidate': row.name, "Father's name": row.father, 'Date of birth / Age': row.dob, 'Mobile no.': row.mobile, 'Aadhaar no.': row.aadhaar,
   'Address': row.address, 'Post applied for': row.post, 'Vehicle / equipment for trial': equipment(row), 'Other equipment': '',
-  'Driving licence no. & class': row.dl, 'DL issue date':row.dlIssue||'','DL valid up to': row.dlValid, 'Total experience (years)': row.experience, 'Previous employer': row.employer,
+  'Driving licence no.': row.dl, 'DL class details':dlClassDetails(row), 'DL issue date':row.dlIssue||'',
+  'DL valid up to dates':(row.dlValidDates?.length?row.dlValidDates:row.dlValid.split(',').map(value=>value.trim()).filter(Boolean)).join('\n'),
+  'Total experience (years)': row.experience, 'Previous employer': row.employer,
   'Trial date & time': row.trialDate, 'Referred by': row.referredBy,
   ...(row.outcome ? {'Result': row.outcome.result, 'If PASS – recommended for': row.outcome.result==='PASS' ? row.outcome.post : '', 'Machine': row.outcome.machine,
     'If FAIL – reason': row.outcome.reason, 'Examiner name': row.outcome.trainer, 'Trial conducted by': row.outcome.trainer, 'Examiner remarks': row.outcome.remarks} : {}),

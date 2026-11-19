@@ -38,11 +38,14 @@ test('does not infer parent from care-of and clears malformed fields',()=>{
  assert.equal(value.dob,'');assert.equal(value.uid,'');assert.equal(value.gender,'');assert.equal(value.relationName,'');assert.equal(value.name,fields.name);
 });
 test('reads both driving licence sides and preserves every class and validity date',async()=>{
- const details={licenceNumber:'DL-123',classes:['HMV','LMV','HMV'],issueDate:'2020-01-02',validUpto:['2027-01-02','2030-01-02']};
+ const details={licenceNumber:'DL-123',classDetails:[
+  {code:'HMV',issuedBy:'MH29',dateOfIssue:'2020-01-02',vehicleCategory:'TR',badgeNumber:'298/PSV/12',badgeIssuedDate:'2021-03-04',badgeIssuedBy:'MH29'},
+  {code:'LMV',issuedBy:'MH29',dateOfIssue:'2020-02-03',vehicleCategory:'NT',badgeNumber:'',badgeIssuedDate:'',badgeIssuedBy:''},
+ ],issueDate:'2020-01-02',validUpto:['2027-01-02','2030-01-02','2027-01-02']};
  const read=createAadhaarReader({apiKey:'test',fetchImpl:async(url,options)=>{const body=JSON.parse(options.body);assert.equal(body.contents[0].parts.length,2);return new Response(JSON.stringify({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(details)}]}}]}));}});
  const result=await read(profile,{document:'drivingLicence',images:[input,input]});
- assert.deepEqual(result.details,{...details,classes:['HMV','LMV']});
- assert.deepEqual(cleanDrivingLicenceResult(details).validUpto,details.validUpto);
+ assert.deepEqual(result.details,{...details,validUpto:['2027-01-02','2030-01-02']});
+ assert.deepEqual(cleanDrivingLicenceResult(details).classDetails,details.classDetails);
 });
 test('rejects truncated or invalid model output',async()=>{
  const read=createAadhaarReader({apiKey:'test',fetchImpl:async()=>new Response(JSON.stringify({candidates:[{finishReason:'MAX_TOKENS',content:{parts:[{text:'{}'}]}}]}))});
