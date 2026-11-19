@@ -7,7 +7,7 @@ import {candidateProblem, canApprove, date, DOCS, equipment, indiaDay, indiaTime
   NEXT, nextNumber, post, resultMessage, ROLES, STAGES, VEHICLES, type Candidate, type DrivingLicenceClass, type Outcome, type Role, type Trial} from './records';
 import {approvalTable, detailView, esc, overviewTable, trainerForms} from './views';
 import {getTrialResultFile, removeTrialResultFiles, saveTrialResultFiles} from './trialResultFiles';
-import {deliveryStatus, fetchDecisions, sendApproval, sendPart1, sendResults, type TrialScope} from './telegramSend';
+import {deliveryStatus, fetchDecisions, fetchTrialTrainer, sendApproval, sendPart1, sendResults, type TrialScope} from './telegramSend';
 import {siteDisplayName} from '../siteNames';
 import {findPreviousTrial} from './previousTrial';
 import type {TrialMatch} from '../TrialAadhaarHistory';
@@ -596,6 +596,19 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if(optimizingVideo)return toast(`Wait for the driving video optimization for ${optimizingVideo.name}.`);
     const missingVideo=rows.find(row=>!draftVideos.has(row.id));
     if(missingVideo)return toast(`Upload the driving video for ${missingVideo.name}.`);
+    if(savedSession()?.grant){
+      submittingResults=true;
+      try{
+        const trainer=await fetchTrialTrainer(scope);
+        if(effects.signal.aborted)return;
+        setTrainer(trainer.name);
+        if(!trainerName)return toast(trainer.reason||'Assign a Driver Trainer in the active site hierarchy before submitting.');
+        if(trainer.roles&&!trainer.roles.includes('trainer'))return toast('Your Pulse ID is no longer assigned as Driver Trainer for this site.');
+      }catch(error){
+        if(!effects.signal.aborted)toast(error instanceof Error?error.message:'Could not load the Driver Trainer hierarchy. Try again.');
+        return;
+      }finally{submittingResults=false;}
+    }
     if(!trainerName)return toast('Assign a Driver Trainer in the active site hierarchy before submitting.');
     const ids=new Set(rows.map(row=>row.id)), at=new Date().toISOString(), changed: Trial[]=[];
     const files = new Map(rows.flatMap(row=>{

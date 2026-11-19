@@ -37,6 +37,38 @@ afterEach(()=>{
 });
 
 describe('Trial workflow preview',()=>{
+  it('reloads a trainer saved in another tab without losing the candidate draft',async()=>{
+    sessionStorage.setItem('hrPulseSession',JSON.stringify({grant:'a'.repeat(43)}));
+    const request=vi.spyOn(window,'fetch').mockImplementation(async url=>Response.json(
+      String(url).endsWith('/trial-trainer')?{actor:'',name:'',site:scope.site}:{}
+    ));
+    const {el,click,input,change}=setup();
+    click('[data-tab="hr"]');
+    input('#f_name','Hierarchy Candidate');
+    input('#f_mobile','9876543210');
+    click('input[name="f_vehicle"][value="Excavator"]');
+    change('#d_dl','Yes');
+    change('#d_medical','Yes');
+    fireEvent.submit(el('#single'));
+    change('#role','trainer');
+    await waitFor(()=>expect(el('[data-f="trainer"]')).toHaveValue(''));
+    request.mockImplementation(async()=>Response.json(hierarchyTrainer));
+    fireEvent.focus(window);
+    await waitFor(()=>expect(el('[data-f="trainer"]')).toHaveValue('Sajad Ali'));
+    expect(el('#trList')).toHaveTextContent('Hierarchy Candidate');
+    click('[aria-label="Hierarchy Candidate: PASS"]');
+    fireEvent.change(el('[data-result-file]'),{target:{files:[new File(['result'],'result.pdf',{type:'application/pdf'})]}});
+    fireEvent.change(el('[data-driving-video]'),{target:{files:[new File(['video'],'trial.mp4',{type:'video/mp4'})]}});
+    await waitFor(()=>expect(el('#trList')).toHaveTextContent('trial.mp4'));
+    vi.spyOn(trialResultFiles,'saveTrialResultFiles').mockResolvedValue();
+    request.mockImplementation(async url=>Response.json(String(url).endsWith('/trial-trainer')
+      ?{...hierarchyTrainer,name:'New Trainer',roles:['trainer']}
+      :{telegram:{message:'Sent',recipients:1,connected:[]}}));
+    click('#trSubmit');
+    await waitFor(()=>expect(el('#bTrainer')).toHaveTextContent('0'));
+    const stored=JSON.parse(localStorage.getItem('hrPulse.localTrialWorkflow.v1:'+JSON.stringify([scope.owner,scope.company,scope.site]))!);
+    expect(stored[0].outcome.trainer).toBe('New Trainer');
+  });
   it('requires the Aadhaar and driving licence dates of birth to match',()=>{
     expect(sameDocumentBirthDate('2000-01-02','2000-01-02')).toBe(true);
     expect(sameDocumentBirthDate('2000-01-02','2001-03-04')).toBe(false);
