@@ -421,7 +421,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
       name:value('#f_name'),father:value('#f_father'),dob:value('#f_dob'),mobile:value('#f_mobile'),aadhaar:digits(value('#f_aadhaar')),
       address:value('#f_address'),photo,post:post(value('input[name="f_post"]:checked')),vehicles,
       otherVehicle:vehicles.includes('Other')?value('#f_vother'):'',dl:value('#f_dl'),dlClasses,dlIssue:value('#f_dlissue'),dlValid:dlValidDates.join(', '),dlValidDates,
-      experience:value('#f_exp'),employer:value('#f_prev'),trialDate:value('#f_trial'),referredBy:value('#f_ref'),
+      experience:value('#f_exp'),employer:value('#f_prev'),trialDate:value('#f_trial'),referredBy:value('#f_ref'),trialConductedBy:value('#f_conducted'),
       docs:Object.fromEntries(DOCS.map(([key])=>[key,check(value('#d_'+key),value('#dr_'+key))])) as Candidate['docs'],
     }],false)) resetSingle();
   };

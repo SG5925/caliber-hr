@@ -22,7 +22,7 @@ const fields = (row: Trial): Record<string,string> => ({
   'Driving licence no.': row.dl, 'DL class details':dlClassDetails(row), 'DL issue date':row.dlIssue||'',
   'DL valid up to dates':(row.dlValidDates?.length?row.dlValidDates:row.dlValid.split(',').map(value=>value.trim()).filter(Boolean)).join('\n'),
   'Total experience (years)': row.experience, 'Previous employer': row.employer,
-  'Trial date & time': row.trialDate, 'Referred by': row.referredBy,
+  'Trial date & time': row.trialDate, 'Referred by': row.referredBy, 'Trial Conducted by':row.trialConductedBy||'',
   ...(row.outcome ? {'Result': row.outcome.result, 'If PASS – recommended for': row.outcome.result==='PASS' ? row.outcome.post : '', 'Machine': row.outcome.machine,
     'If FAIL – reason': row.outcome.reason, 'Examiner name': row.outcome.trainer, 'Trial conducted by': row.outcome.trainer, 'Examiner remarks': row.outcome.remarks} : {}),
 });

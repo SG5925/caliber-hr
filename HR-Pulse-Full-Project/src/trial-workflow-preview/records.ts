@@ -28,7 +28,7 @@ export type DrivingLicenceClass={code:string;issuedBy:string;dateOfIssue:string;
 export type Candidate = {
   name: string; father: string; dob: string; mobile: string; aadhaar: string; address: string; photo: string;
   post: Post; vehicles: string[]; otherVehicle: string; dl: string; dlClasses?:DrivingLicenceClass[];dlIssue?: string; dlValid: string;dlValidDates?:string[]; experience: string;
-  employer: string; trialDate: string; referredBy: string; docs: Record<typeof DOCS[number][0],Check>;
+  employer: string; trialDate: string; referredBy: string; trialConductedBy?:string; docs: Record<typeof DOCS[number][0],Check>;
 };
 export type History = {role: Role; action: string; by: string; at: string; note?: string};
 export type Trial = Candidate & {

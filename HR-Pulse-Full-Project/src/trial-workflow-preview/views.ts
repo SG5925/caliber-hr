@@ -92,7 +92,7 @@ export function detailView(row: Trial, role: Role, canOpenJoining = false) {
     <div class="grid-form"><div class="rows">${section([
       ["Father's name",row.father],['Date of birth',date(row.dob)],['Mobile no.',row.mobile],['Aadhaar no.',row.aadhaar],['Address',row.address],
       ['Post applied for',row.post],['Vehicle / equipment',equipment(row)],['Driving licence no.',row.dl],['Class details',dlClasses],['DL issue date',date(row.dlIssue||'')],['DL valid up to',dlValidDates],
-      ['Experience',row.experience?row.experience+' years':''],['Previous employer',row.employer],['Trial date &amp; time',dateTime(row.trialDate)],['Referred by',row.referredBy],
+      ['Experience',row.experience?row.experience+' years':''],['Previous employer',row.employer],['Trial date &amp; time',dateTime(row.trialDate)],['Referred by',row.referredBy],['Trial Conducted by',row.trialConductedBy||''],
     ])}</div><div class="photo">${photo}</div></div>
     <div class="secbar">Document check</div>
     ${table(['Document','Seen','Remarks'],DOCS.map(([key,label])=>`<tr><td>${label}</td><td>${esc(row.docs[key]?.seen)||'–'}</td><td>${esc(row.docs[key]?.remarks)}</td></tr>`).join(''),420)}
