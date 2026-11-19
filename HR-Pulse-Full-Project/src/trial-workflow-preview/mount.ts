@@ -7,7 +7,7 @@ import {candidateProblem, canApprove, date, DOCS, equipment, indiaDay, indiaTime
   NEXT, nextNumber, post, resultMessage, ROLES, STAGES, VEHICLES, type Candidate, type DrivingLicenceClass, type Outcome, type Role, type Trial} from './records';
 import {approvalTable, detailView, esc, overviewTable, trainerForms} from './views';
 import {getTrialResultFile, removeTrialResultFiles, saveTrialResultFiles} from './trialResultFiles';
-import {deliveryStatus, fetchDecisions, sendApproval, sendPart1, sendResults, type TrialAccess, type TrialScope} from './telegramSend';
+import {deliveryStatus, fetchDecisions, sendApproval, sendPart1, sendResults, type TrialScope} from './telegramSend';
 import {siteDisplayName} from '../siteNames';
 import {findPreviousTrial} from './previousTrial';
 import type {TrialMatch} from '../TrialAadhaarHistory';
@@ -48,7 +48,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   const draftFiles = new Map<string,File>();
   const selected = new Set<string>();
   const effects = new AbortController();
-  let tab: Tab = 'aadhaar', role: Role = 'hr', accessReady=!savedSession()?.grant,roleAssigned=accessReady,roleLocked=false,stageFilter = '', records: Trial[] = [], bulk = Array.from({length:3},blankBulkRow);
+  let tab: Tab = 'aadhaar', role: Role = 'hr', stageFilter = '', records: Trial[] = [], bulk = Array.from({length:3},blankBulkRow);
   let photo = '', photoLoading = false, photoVersion = 0, photoUrl = '', detailId = '', toastTimer: ReturnType<typeof setTimeout>;
   let aadhaarScanPending = false,aadhaarBirthDate='',drivingLicenceBusy=false,drivingLicenceReady=false;
   let aadhaarHistoryPending=false, aadhaarLookupVersion=0, checkedAadhaar='';
@@ -147,7 +147,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
       : !rows.length ? empty('No matches','Clear the search or select the stage again to show everyone.') : overviewTable(rows,Boolean(onCleared));
   }
   const waiting = () => sorted(records.filter(row=>row.stage==='trainer')).reverse();
-  const approvals = () => accessReady&&roleAssigned&&canApprove(role) ? sorted(records.filter(row=>row.stage===role)) : [];
+  const approvals = () => canApprove(role) ? sorted(records.filter(row=>row.stage===role)) : [];
   const draftFor = (row: Trial) => {
     let draft = drafts.get(row.id);
     if (!draft) {draft = defaultOutcome(row); drafts.set(row.id,draft);}
@@ -155,7 +155,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   };
   function renderTrainer() {
     const rows = waiting();
-    const canEdit = accessReady&&roleAssigned&&role==='trainer' && !submittingResults;
+    const canEdit = role==='trainer' && !submittingResults;
     $('#trCount').textContent = rows.length ? `· ${rows.length} waiting` : '';
     $('#trList').innerHTML = trainerForms(rows,draftFor,canEdit,draftFiles);
     $('#trRoleWarn').hidden = role==='trainer';
@@ -172,7 +172,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     for (const selector of ['#apApprove','#apReject']) $<HTMLButtonElement>(selector).disabled = !selected.size;
   }
   function renderApprovals() {
-    const allowed = accessReady&&roleAssigned&&canApprove(role), rows = approvals();
+    const allowed = canApprove(role), rows = approvals();
     $('#apTitle').textContent = allowed ? `${ROLES[role]} approval queue` : 'Approvals';
     $('#apRoleWarn').hidden = allowed;
     $('#apRoleWarn').textContent = 'Approvals go PM → Office HR → Regional HR → Directors. Switch “Working as” to one of them to approve.';
@@ -198,7 +198,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     showTab(tab);
   }
   function createCandidates(candidates: Candidate[], batch: boolean) {
-    if (!accessReady||!roleAssigned||role!=='hr' || photoLoading || (!batch && (aadhaarScanPending||aadhaarHistoryPending))) return false;
+    if (role!=='hr' || photoLoading || (!batch && (aadhaarScanPending||aadhaarHistoryPending))) return false;
     const name = signer();
     if (!name) return false;
     if (!candidates.length) {toast('Add at least one candidate.');return false;}
@@ -243,7 +243,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     updateSingleActions();
   }
   function updateSingleActions() {
-    const canEdit = accessReady&&roleAssigned&&role === 'hr';
+    const canEdit = role === 'hr';
     $<HTMLButtonElement>('#sSubmit').disabled = !canEdit || photoLoading || aadhaarScanPending || aadhaarHistoryPending;
     $<HTMLButtonElement>('#aadhaarContinue').disabled = aadhaarScanPending || aadhaarHistoryPending || drivingLicenceBusy || !drivingLicenceReady;
   }
@@ -428,7 +428,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
 
   function updateBulkActions() {
     for (const control of $$<HTMLButtonElement|HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>('#bulk button, #bulk input, #bulk select, #bulk textarea')) {
-      control.disabled = !accessReady||!roleAssigned||bulkBusy || role!=='hr';
+      control.disabled = bulkBusy || role!=='hr';
     }
   }
   function renderBulk() {
@@ -439,7 +439,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     updateBulkActions();
   }
   $('#bTable').oninput = event=>{
-    if (!accessReady||!roleAssigned||bulkBusy || role!=='hr') return;
+    if (bulkBusy || role!=='hr') return;
     const input=event.target as HTMLInputElement;
     const row=bulk[Number(input.dataset.row)];
     if (!row) return;
@@ -543,7 +543,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     input.onchange = async ()=>{
       const files = Array.from(input.files??[]);
       input.value = '';
-      if (!files.length || !accessReady||!roleAssigned||bulkBusy || role!=='hr') return;
+      if (!files.length || bulkBusy || role!=='hr') return;
       setBulkBusy(true);
       try {await load(files);}
       catch (error) {
@@ -571,7 +571,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   };
 
   async function submitResults() {
-    if (!accessReady||!roleAssigned||role!=='trainer'||submittingResults) return;
+    if (role!=='trainer'||submittingResults) return;
     const name = signer();
     if (!name) return;
     const rows=waiting().filter(row=>drafts.get(row.id)?.result);
@@ -637,7 +637,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   }
   $('#trList').onclick=event=>{
     const button=(event.target as Element).closest<HTMLButtonElement>('[data-res],[data-choose-result-file],[data-remove-result-file]');
-    if (!button || !accessReady||!roleAssigned||role!=='trainer' || submittingResults) return;
+    if (!button || role!=='trainer' || submittingResults) return;
     const card=button.closest<HTMLElement>('[data-id]');
     const row=waiting().find(item=>item.id===card?.dataset.id);
     if (!row) return;
@@ -660,7 +660,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
       item.dataset.res===result&&item.closest<HTMLElement>('[data-id]')?.dataset.id===row.id)?.focus();
   };
   $('#trList').oninput=event=>{
-    if (!accessReady||!roleAssigned||role!=='trainer'||submittingResults) return;
+    if (role!=='trainer'||submittingResults) return;
     const input=event.target as HTMLInputElement;
     const field=input.dataset.f;
     if (!field) return;
@@ -672,7 +672,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   };
   $('#trList').onchange=event=>{
     const input=event.target as HTMLInputElement;
-    if (!accessReady||!roleAssigned||role!=='trainer'||submittingResults||!input.hasAttribute('data-result-file')) return;
+    if (role!=='trainer'||submittingResults||!input.hasAttribute('data-result-file')) return;
     const file=input.files?.[0];
     input.value='';
     const row=waiting().find(item=>item.id===input.closest<HTMLElement>('[data-id]')?.dataset.id);
@@ -690,7 +690,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     focusResultUpload(row.id);
   };
   $('#trAllPass').onclick=()=>{
-    if(!accessReady||!roleAssigned||role!=='trainer'||submittingResults) return;
+    if(role!=='trainer'||submittingResults) return;
     for(const row of waiting()){const draft=draftFor(row);if(!draft.result)draft.result='PASS';}
     renderTrainer();
   };
@@ -698,7 +698,7 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
 
   function decide(approved: boolean, ids: string[], note: string) {
     const reviewer=role;
-    if (!accessReady||!roleAssigned||!canApprove(reviewer)) return false;
+    if (!canApprove(reviewer)) return false;
     const name=signer();
     if (!name) return false;
     if (!ids.length) {toast('Select at least one form.');return false;}
@@ -909,7 +909,6 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     $('#part1Title').focus();
   };
   $<HTMLSelectElement>('#role').onchange=event=>{
-    if(roleLocked)return;
     const next=(event.target as HTMLSelectElement).value;
     if(!Object.hasOwn(ROLES,next)) return;
     role=next as Role;
@@ -954,7 +953,6 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
   $('#company').textContent=scope.company||'CMLL';
   $('#sitePill').textContent=site.toUpperCase();
   $<HTMLInputElement>('#myName').value=scope.name;
-  if(savedSession()?.grant){$<HTMLSelectElement>('#role').disabled=true;$<HTMLInputElement>('#myName').readOnly=true;aadhaar.setDisabled(true);}
   $('#storeNote').textContent='Saved in this browser only.';
   try{records=read();}
   catch {toast('Could not read the saved preview records.');}
@@ -968,16 +966,5 @@ export function mountTrialPreview(root: ShadowRoot, scope: Scope, aadhaar: {
     if (photoUrl) URL.revokeObjectURL(photoUrl);
     root.replaceChildren();
   }
-  function setAccess(access:Pick<TrialAccess,'role'|'name'|'reason'>){
-    if(effects.signal.aborted)return;
-    accessReady=true;roleAssigned=Boolean(access.role);roleLocked=true;
-    const select=$<HTMLSelectElement>('#role'),name=$<HTMLInputElement>('#myName');
-    select.replaceChildren();
-    const option=document.createElement('option');option.value=access.role||'';option.textContent=access.role?(access.role==='hr'?'HR Manager':ROLES[access.role]):'No hierarchy access';select.append(option);select.disabled=true;
-    name.value=access.name||scope.name;name.readOnly=true;
-    if(access.role){role=access.role;tab=roleTab[role];aadhaar.setDisabled(role!=='hr');}
-    else{aadhaar.setDisabled(true);tab='overview';toast(access.reason||'Your Pulse username is not assigned in this site hierarchy.');}
-    selected.clear();refresh();
-  }
-  return {dispose, fillAadhaarDetails, setAadhaarBusy,setDrivingLicenceBusy,setDrivingLicenceReady,fillDrivingLicenceDetails,setAccess};
+  return {dispose, fillAadhaarDetails, setAadhaarBusy,setDrivingLicenceBusy,setDrivingLicenceReady,fillDrivingLicenceDetails};
 }

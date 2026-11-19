@@ -93,21 +93,6 @@ function trialHierarchySite(target){
   return matchesGroup&&[template.code,template.name,...(trialSiteAliases[template.code]||[])].some(name=>norm(name)===site);
  });
 }
-const TRIAL_ROLE_LABELS={hr:'HR Manager',trainer:'Driver Trainer',pm:'Project Manager',ohr:'Office HR — either one',rhr:'HR Manager — either one',director:'Final approval — any one'};
-export async function trialAccessFor(db,profile,target){
- const actor=norm(profile?.actor),name=String(profile?.name||profile?.username||profile?.actor||'').trim(),site=target&&trialHierarchySite(target);
- if(!actor||!site)return {role:null,name,actor,site:site?.name||String(target?.site||''),reason:site?'Your Pulse username is not available.':'Select a configured site to load your Trial Form access.'};
- const rows=(await db.query("SELECT code,data FROM hr_records WHERE kind='joiningHierarchies' AND status='ACTIVE'")).rows;
- const saved=rows.find(row=>row.code===site.code),data=withOfficeHr(withDriverTrainer(currentHierarchy(saved?.data)));
- if(!data)return {role:null,name,actor,site:site.name,reason:'Enable the site hierarchy before opening the Trial Form.'};
- const entry=Object.entries(TRIAL_ROLE_LABELS).find(([,label])=>(data.steps||[]).some(step=>step.label===label&&(step.approvers||[]).map(norm).includes(actor)));
- return entry?{role:entry[0],name,actor,site:site.name}:{role:null,name,actor,site:site.name,reason:'Your Pulse username is not assigned in this site hierarchy.'};
-}
-async function requireTrialRole(db,profile,target,expected){
- const access=await trialAccessFor(db,profile,target);
- if(access.role!==expected)fail(`Only the assigned ${TRIAL_ROLE_LABELS[expected]||expected} may perform this Trial Form action.`,403);
- return access;
-}
 export async function hierarchyRecipients(db,stage,target){
  const site=target&&trialHierarchySite(target);
  if(target&&!site)return [];
@@ -369,11 +354,6 @@ export function createTelegram(pool){
    await tx(async db=>{await db.query('DELETE FROM hr_telegram_link_tokens WHERE actor=$1 OR expires_at<now()',[actor]);await db.query("INSERT INTO hr_telegram_link_tokens(hash,actor,expires_at) VALUES($1,$2,now()+interval '7 days')",[hash(token),actor]);});
    return {url:`https://t.me/${process.env.TELEGRAM_TRIAL_BOT_USERNAME}?start=${token}`};
   }
-  if(route==='trial-access'&&method==='POST'){
-   if(!grantedMenus(profile).has('Employee Master'))fail('Employee Master permission required',403);
-   const target={site:String(input.site||'').slice(0,80),region:String(input.region||'').slice(0,80),company:String(input.company||'').slice(0,120),group:String(input.group||'').slice(0,80)};
-   return trialAccessFor(pool,profile,target);
-  }
   if(route==='trial-history'&&method==='POST'){
    if(!grantedMenus(profile).has('Employee Master'))fail('Employee Master permission required',403);
    const aadhaar=String(input.aadhaar||'').replace(/\D/g,'');if(!/^\d{12}$/.test(aadhaar))fail('Enter a 12-digit Aadhaar number');
@@ -410,7 +390,6 @@ export function createTelegram(pool){
    const records=items.map(c=>{const fields=cleanFields(c.fields),formNo=String(c.formNo||'').trim().slice(0,40);if(!formNo)fail('Form number is required');const name=String(fields['Name of candidate']||'').trim();if(!name)fail('Candidate name is required for every row');
     return {formNo,heading,site,company,department,fields,stage:'PART1',status:'Sent to driver trainer',batchId,trialBy,attachments:cleanAttachments(c.attachments),part1By:profile.actor,part1At:new Date().toISOString(),savedBy:profile.actor,savedAt:new Date().toISOString()};});
    const target={site,region:String(input.region||'').slice(0,80),company,group:String(input.group||'').slice(0,80)};
-   await requireTrialRole(pool,profile,target,'hr');
    const recipients=(await trialRecipientsFor(pool,'part1',target)).map(recipientActor);
    let message,files=[];
    if(batchId){const batch={batchId,site,trialBy,trialDate:records[0].fields['Trial date & time']};message=trialBatchSubmittedMessage(batch,records);
@@ -447,7 +426,6 @@ export function createTelegram(pool){
    const reviewer=String(input.reviewer||'');if(!ROLE_TITLE[reviewer])fail('Unknown reviewer stage');
    const decision={approved:!!input.approved,note:String(input.note||'').slice(0,300),at:input.at&&!Number.isNaN(new Date(input.at).valueOf())?input.at:new Date().toISOString(),by:String(input.by||profile.name||profile.actor).slice(0,80),via:'web'};
    const target={site:String(input.site||'').slice(0,80),region:String(input.region||'').slice(0,80),company:String(input.company||'').slice(0,120),group:String(input.group||'').slice(0,80)};
-   await requireTrialRole(pool,profile,target,reviewer);
    const batchId=String(input.batchId||'').slice(0,40);
    const rows=(Array.isArray(input.rows)?input.rows:[]).slice(0,100).map(r=>{const formNo=String(r.formNo||'').slice(0,40);if(!formNo)fail('Form number is required');return {formNo,fields:cleanFields(r.fields),attachments:cleanAttachments(r.attachments),history:(Array.isArray(r.history)?r.history:[]).slice(0,40).map(h=>({role:String(h.role||'').slice(0,20),action:String(h.action||'').slice(0,80),by:String(h.by||'').slice(0,80),at:String(h.at||'').slice(0,40),note:String(h.note||'').slice(0,300)})),docs:Object.fromEntries(Object.entries(r.docs&&typeof r.docs==='object'?r.docs:{}).slice(0,10).map(([k,v])=>[String(k).slice(0,20),String(v??'').slice(0,10)])),site:target.site,company:target.company,department:String(input.department||'').slice(0,80),batchId,trialBy:String(r.trialBy||'').slice(0,80)};});
    if(!rows.length)fail('No forms to notify');
@@ -467,13 +445,11 @@ export function createTelegram(pool){
    if(!grantedMenus(profile).has('Employee Master'))fail('Employee Master permission required',403);
    const formNo=String(input.formNo||'').trim().slice(0,40);if(!formNo)fail('Form number is required');
    const fields=cleanFields(input.fields);if(!['PASS','FAIL'].includes(fields.Result))fail('Result must be PASS or FAIL');if(!fields['Name of candidate']?.trim())fail('Candidate name is required');
-   const target={site:String(input.site||'').slice(0,80),region:String(input.region||'').slice(0,80),company:String(input.company||'').slice(0,120),group:String(input.group||'').slice(0,80)};
-   await requireTrialRole(pool,profile,target,'trainer');
    const prev=(await pool.query("SELECT id,data FROM hr_records WHERE kind='trialForms' AND code=$1",[formNo])).rows[0];
    const attachments=cleanAttachments(input.attachments);
    const record={...(prev?.data||{}),formNo,heading:String(input.heading||'').slice(0,120),site:String(input.site||'').slice(0,80),company:String(input.company||'').slice(0,120),department:String(input.department||'').slice(0,80),batchId:String(input.batchId||prev?.data?.batchId||'').slice(0,40),fields:{...(prev?.data?.fields||{}),...fields},attachments:attachments.length?attachments:prev?.data?.attachments||[],stage:'RESULT',status:'Sent to PM for approval',trialBy:String(input.trialBy||fields['Examiner name']||profile.name||profile.actor).slice(0,80),resultBy:profile.actor,resultAt:new Date().toISOString(),savedBy:profile.actor,savedAt:new Date().toISOString()};
    Object.assign(record,{pendingRole:'pm',history:Array.isArray(record.history)?record.history:[]});
-   const message=trialResultMessage(record,profile.name||profile.actor),recipients=(await trialRecipientsFor(pool,'result',target)).map(recipientActor);
+   const message=trialResultMessage(record,profile.name||profile.actor),recipients=(await trialRecipientsFor(pool,'result',{site:record.site,region:String(input.region||'').slice(0,80),company:record.company,group:String(input.group||'').slice(0,80)})).map(recipientActor);
    await tx(async db=>{let id=prev?.id;
     if(id)await db.query('UPDATE hr_records SET name=$1,data=$2,version=version+1,updated_by=$3,updated_at=now() WHERE id=$4',[record.fields['Name of candidate'],record,profile.actor,id]);
     else id=(await db.query("INSERT INTO hr_records(id,kind,code,name,data,status,created_by,updated_by) VALUES(gen_random_uuid(),'trialForms',$1,$2,$3,'ACTIVE',$4,$4) RETURNING id",[formNo,record.fields['Name of candidate'],record,profile.actor])).rows[0].id;
@@ -491,11 +467,9 @@ export function createTelegram(pool){
    if(!results.length||results.some(r=>!r.result))fail('Mark PASS or FAIL for every candidate');
    const trialBy=String(input.trialBy||profile.name||profile.actor).slice(0,80);
    const xlsx=input.xlsx?String(input.xlsx).replace(/^data:[^,]*,/,'').slice(0,8*1024*1024):'';
+   const recipients=(await trialRecipientsFor(pool,'result',{site:String(input.site||''),region:String(input.region||'').slice(0,80),company:String(input.company||''),group:String(input.group||'').slice(0,80)})).map(recipientActor);
    let message;const records=[];
    const site=String(input.site||'').slice(0,80),company=String(input.company||'').slice(0,120),department=String(input.department||'').slice(0,80),heading=String(input.heading||'').slice(0,120);
-   const target={site,region:String(input.region||'').slice(0,80),company,group:String(input.group||'').slice(0,80)};
-   await requireTrialRole(pool,profile,target,'trainer');
-   const recipients=(await trialRecipientsFor(pool,'result',target)).map(recipientActor);
    const given=new Map((Array.isArray(input.rows)?input.rows:[]).slice(0,100).map(r=>[String(r.formNo||'').slice(0,40),{fields:cleanFields(r.fields),attachments:cleanAttachments(r.attachments)}]));
    await tx(async db=>{const stored=(await db.query("SELECT id,code,data FROM hr_records WHERE kind='trialForms' AND status='ACTIVE' AND data->>'batchId'=$1 FOR UPDATE",[batchId])).rows;
     const rows=[...stored];for(const [formNo,g] of given)if(!stored.some(r=>r.code===formNo))rows.push({id:null,code:formNo,data:{formNo,heading,site,company,department,batchId,fields:g.fields,attachments:g.attachments,stage:'PART1',status:'Sent to driver trainer'}});
@@ -525,12 +499,10 @@ export function createTelegram(pool){
    const f=input.fields&&typeof input.fields==='object'?input.fields:{},formNo=String(input.formNo||'').trim().slice(0,40);if(!formNo)fail('Form number is required');
    const name=String(f['Name of candidate']||'').trim();if(!name)fail('Candidate name is required.');
    const result=f['Result']==='PASS'?'PASS':f['Result']==='FAIL'?'FAIL':'';if(!result)fail('Select the trial Result (PASS / FAIL) before saving.');
-   const target={site:String(input.site||'').slice(0,80),region:String(input.region||'').slice(0,80),company:String(input.company||'').slice(0,120),group:String(input.group||'').slice(0,80)};
-   await requireTrialRole(pool,profile,target,'trainer');
    const prev=(await pool.query("SELECT data FROM hr_records WHERE kind='trialForms' AND code=$1",[formNo])).rows[0]?.data||{};
    const record={...prev,formNo,heading:String(input.heading||'').slice(0,120),site:String(input.site||'').slice(0,80),company:String(input.company||'').slice(0,120),department:String(input.department||'').slice(0,80),fields:cleanFields(f),stage:'RESULT',status:'Sent to PM for approval',trialBy:String(input.trialBy||f['Examiner name']||profile.name||profile.actor).slice(0,80),resultBy:profile.actor,resultAt:new Date().toISOString(),savedBy:profile.actor,savedAt:new Date().toISOString()};
    const message=trialResultMessage(record,profile.name||profile.actor);
-   const recipients=(await trialRecipientsFor(pool,'result',target)).map(recipientActor);
+   const recipients=(await trialRecipientsFor(pool,'result',{site:record.site,region:input.region,company:record.company,group:input.group})).map(recipientActor);
    let id;await tx(async db=>{
     const aadhaar=String(f['Aadhaar no.']||f['Aadhaar No.']||f['Aadhaar No. *']||'').replace(/\D/g,'');
     if(!/^\d{12}$/.test(aadhaar))fail('Enter a 12-digit Aadhaar number');

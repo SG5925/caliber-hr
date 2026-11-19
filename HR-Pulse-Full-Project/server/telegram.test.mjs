@@ -91,15 +91,15 @@ test('trial Aadhaar history returns only site-scoped result metadata from both t
 
 test('already-passed Aadhaar cannot create a trial, overwrite it, or queue Telegram',async()=>{
  for(const result of ['PASS','FAIL']){
-  const sql=[];const db={query:async(query)=>{sql.push(query);if(query.includes("kind='joiningHierarchies'"))return {rows:[{code:'NCL-JAYANT',data:{steps:[{label:'Driver Trainer',approvers:['trainer']}]}}]};if(query.includes("code='SETTINGS'"))return {rows:[]};if(query.includes("data->'fields'->>'Result'='PASS'"))return {rows:[{id:'passed'}]};return {rows:[]};},release(){}};
+  const sql=[];const db={query:async(query)=>{sql.push(query);if(query.includes("code='SETTINGS'"))return {rows:[]};if(query.includes("data->'fields'->>'Result'='PASS'"))return {rows:[{id:'passed'}]};return {rows:[]};},release(){}};
   const pool={query:db.query,connect:async()=>db};
-  await assert.rejects(createTelegram(pool).telegramApi({actor:'trainer',permissions:{hrDesktopAccess:['Employee Master']}},'trial-forms','POST',{formNo:'TF/new',site:'Jayant OB East',region:'NCL',fields:{'Name of candidate':'Candidate','Aadhaar no.':'123456789012',Result:result}}),e=>e.status===409&&/already passed/.test(e.message));
+  await assert.rejects(createTelegram(pool).telegramApi({actor:'hr',permissions:{hrDesktopAccess:['Employee Master']}},'trial-forms','POST',{formNo:'TF/new',fields:{'Name of candidate':'Candidate','Aadhaar no.':'123456789012',Result:result}}),e=>e.status===409&&/already passed/.test(e.message));
   assert.ok(sql.some(query=>query.includes('pg_advisory_xact_lock')));assert.ok(sql.includes('ROLLBACK'));assert.ok(!sql.some(query=>/INSERT INTO|UPDATE hr_records|hr_telegram_outbox/.test(query)));
  }
 });
 test('a candidate without a previous PASS can save a re-trial',async()=>{
- const sql=[];const db={query:async(query)=>{sql.push(query);if(query.includes("kind='joiningHierarchies'"))return {rows:[{code:'NCL-JAYANT',data:{steps:[{label:'Driver Trainer',approvers:['trainer']}]}}]};if(query.startsWith('INSERT INTO hr_records'))return {rows:[{id:'new'}]};return {rows:[]};},release(){}};
- const out=await createTelegram({query:db.query,connect:async()=>db}).telegramApi({actor:'trainer',permissions:{hrDesktopAccess:['Employee Master']}},'trial-forms','POST',{formNo:'TF/retrial',site:'Jayant OB East',region:'NCL',fields:{'Name of candidate':'Candidate','Aadhaar no.':'123456789012',Result:'FAIL'}});
+ const sql=[];const db={query:async(query)=>{sql.push(query);if(query.startsWith('INSERT INTO hr_records'))return {rows:[{id:'new'}]};return {rows:[]};},release(){}};
+ const out=await createTelegram({query:db.query,connect:async()=>db}).telegramApi({actor:'hr',permissions:{hrDesktopAccess:['Employee Master']}},'trial-forms','POST',{formNo:'TF/retrial',fields:{'Name of candidate':'Candidate','Aadhaar no.':'123456789012',Result:'FAIL'}});
  assert.equal(out.saved,true);assert.ok(sql.includes('COMMIT'));assert.ok(sql.some(query=>query.startsWith('INSERT INTO hr_records')));
 });
 
@@ -170,23 +170,4 @@ test('trial approvals use the active Driver & Operator steps for the form group 
  assert.deepEqual(await actors('part1',{...east,site:'Jayant OB'}),[]);
  assert.deepEqual(await actors('part1',{...east,site:'Dudichua OB East'}),[]);
  assert.deepEqual(await actors('part1',{...east,site:''}),[]);
-});
-
-test('Trial Form access is derived from the active hierarchy and server actions enforce it',async()=>{
- const {trialAccessFor}=await import('./telegram.mjs');
- const rows=[{code:'NCL-JAYANT',data:{group:'NCL',steps:[
-  {label:'HR Manager',approvers:['ankittiwari']},{label:'Project Manager',approvers:['pmuser']},{label:'Driver Trainer',approvers:['traineruser']},
-  {label:'Office HR — either one',approvers:['officeuser']},{label:'HR Manager — either one',approvers:['regionaluser']},{label:'Final approval — any one',approvers:['directoruser']},
- ]}}];
- const queries=[];const pool={query:async sql=>{queries.push(sql);return {rows:sql.includes("kind='joiningHierarchies'")?rows:[]};}};
- const target={site:'Jayant OB East',region:'NCL',group:'OB / COAL',company:'CMLL'};
- for(const [actor,role] of Object.entries({ankittiwari:'hr',traineruser:'trainer',pmuser:'pm',officeuser:'ohr',regionaluser:'rhr',directoruser:'director'})){
-  assert.equal((await trialAccessFor(pool,{actor,name:actor},target)).role,role);
- }
- assert.equal((await trialAccessFor(pool,{actor:'unassigned',name:'Other'},target)).role,null);
- const service=createTelegram(pool),profile={actor:'traineruser',name:'Trainer',permissions:{hrDesktopAccess:['Employee Master']}};
- assert.equal((await service.telegramApi(profile,'trial-access','POST',target)).role,'trainer');
- await assert.rejects(service.telegramApi(profile,'trial-part1','POST',{...target,candidates:[{formNo:'TF/1',fields:{'Name of candidate':'Candidate'}}]}),error=>error.status===403&&/HR Manager/.test(error.message));
- await assert.rejects(service.telegramApi(profile,'trial-approval','POST',{...target,reviewer:'pm',rows:[{formNo:'TF/1'}]}),error=>error.status===403&&/Project Manager/.test(error.message));
- assert.ok(queries.some(sql=>sql.includes("status='ACTIVE'")));
 });

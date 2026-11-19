@@ -4,7 +4,6 @@ import AadhaarUploader from '../AadhaarUploader';
 import DrivingLicenceUploader from '../DrivingLicenceUploader';
 import {savedSession} from '../api';
 import {mountTrialPreview,type PrepareJoining} from './mount';
-import {fetchTrialAccess} from './telegramSend';
 
 type Workflow = ReturnType<typeof mountTrialPreview>;
 
@@ -26,11 +25,7 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
       reset: () => setUploadVersion(version => version + 1),
       setDisabled,
     },onCleared?async rows=>cleared.current?.(rows):undefined);
-    const session=savedSession();
-    if(session?.grant)void fetchTrialAccess({site,region,group,company,department})
-      .then(access=>mounted.setAccess(access))
-      .catch(error=>mounted.setAccess({role:null,name:session.profile.name||session.profile.username||session.profile.actor||signerName,reason:error instanceof Error?error.message:'Unable to load Trial Form access.'}));
-    setDisabled(Boolean(session?.grant));
+    setDisabled(false);
     setWorkflow(mounted);
     return mounted.dispose;
   },[owner,legacyOwner,signerName,site,region,group,company,department]);
