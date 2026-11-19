@@ -72,7 +72,7 @@ it('finds candidates saved under the original sign-in and current HR account key
  localStorage.setItem(key('other'),JSON.stringify([other]));
  const {container}=render(<App/>);
  await screen.findAllByText('Configured HR user');
- fireEvent.change(await screen.findByRole('combobox',{name:'Department'}),{target:{value:'Driver'}});
+ fireEvent.click(await screen.findByRole('button',{name:'OB / COAL'}));
  fireEvent.click(await screen.findByRole('button',{name:'Trial Form'}));
  await screen.findByRole('button',{name:'Upload Aadhaar Image 1'});
  const preview=container.querySelector('[aria-label="Trial workflow local preview"]')!.shadowRoot!;
