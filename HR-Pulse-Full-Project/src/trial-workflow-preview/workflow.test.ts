@@ -58,7 +58,8 @@ describe('Trial workflow preview',()=>{
     input('#f_name','Verified Name');
     click('[data-tab="aadhaar"]');
     const file = new File(['%PDF-1.7'],'sample-aadhaar.pdf',{type:'application/pdf'});
-    fireEvent.click(getByRole('button',{name:'Upload Aadhar Image'}));
+    fireEvent.click(getByRole('button',{name:'Upload A/D'}));
+    fireEvent.click(getByRole('button',{name:'Upload Aadhaar Image'}));
     expect(getByRole('button',{name:'Camera'})).toBeEnabled();
     expect(getByRole('button',{name:'Gallery / Document'})).toBeEnabled();
     fireEvent.change(getByLabelText('Choose Aadhaar card from gallery'),{target:{files:[file]}});
@@ -70,6 +71,7 @@ describe('Trial workflow preview',()=>{
       method:'POST',
       headers:{Authorization:'Bearer '+grant,'Content-Type':'application/json'},
     }));
+    fireEvent.click(getByRole('button',{name:'Upload A/D'}));
     fireEvent.click(getByRole('button',{name:'Upload Front Driving License Image'}));
     expect(getByRole('button',{name:'Camera'})).toBeEnabled();
     expect(getByRole('button',{name:'Gallery / Document'})).toBeEnabled();
@@ -79,6 +81,7 @@ describe('Trial workflow preview',()=>{
     await waitFor(()=>expect(document.querySelector('img[alt="Uploaded front driving licence preview"]')).toHaveAttribute('src',expect.stringMatching(/^blob:/)));
     expect(el('#aadhaarContinue')).toBeDisabled();
     fireEvent.change(getByLabelText('Choose front driving licence image'),{target:{files:[file]}});
+    fireEvent.click(getByRole('button',{name:'Upload A/D'}));
     fireEvent.click(getByRole('button',{name:'Upload Back Driving License Image'}));
     expect(getByRole('button',{name:'Camera'})).toBeEnabled();
     expect(getByRole('button',{name:'Gallery / Document'})).toBeEnabled();
@@ -112,7 +115,7 @@ describe('Trial workflow preview',()=>{
     expect(el('#sSubmit')).toBeEnabled();
     click('#sReset');
     expect(getByLabelText('Choose front driving licence image')).toBeEnabled();
-    expect(getByRole('button',{name:'Upload Aadhar Image'})).toBeEnabled();
+    expect(getByRole('button',{name:'Upload A/D'})).toBeEnabled();
     change('#role','trainer');
     expect(getByLabelText('Choose front driving licence image')).toBeDisabled();
   });

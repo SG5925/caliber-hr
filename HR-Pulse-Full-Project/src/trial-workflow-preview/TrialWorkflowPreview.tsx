@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {Upload} from 'lucide-react';
 import AadhaarUploader from '../AadhaarUploader';
 import DrivingLicenceUploader from '../DrivingLicenceUploader';
 import {savedSession} from '../api';
@@ -13,6 +14,7 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
   const [workflow,setWorkflow] = useState<Workflow | null>(null);
   const [disabled,setDisabled] = useState(false);
   const [uploadVersion,setUploadVersion] = useState(0);
+  const [uploadMenu,setUploadMenu] = useState<'root'|'aadhaar'|'front'|'back'>();
   const signerName=name||savedSession()?.profile?.name||savedSession()?.profile?.username||'';
   const cleared=useRef(onCleared);
   cleared.current=onCleared;
@@ -28,12 +30,20 @@ export default function TrialWorkflowPreview({owner,legacyOwner,name,site,region
     return mounted.dispose;
   },[owner,legacyOwner,signerName,site,region,group,company,department]);
   return <div ref={host} aria-label="Trial workflow local preview">
-    {workflow && <div slot="aadhaar-upload">
+    {workflow && <div slot="aadhaar-upload" className="trial-document-uploads">
+      <div className="trial-document-menu">
+        <button disabled={disabled} type="button" className="employee-import" aria-expanded={Boolean(uploadMenu)} onClick={()=>setUploadMenu(menu=>menu?undefined:'root')}><Upload/>Upload A/D</button>
+        {uploadMenu==='root'&&<div className="aadhaar-source-menu trial-document-options">
+          <button type="button" onClick={()=>setUploadMenu('aadhaar')}>Upload Aadhaar Image</button>
+          <button type="button" onClick={()=>setUploadMenu('front')}>Upload Front Driving License Image</button>
+          <button type="button" onClick={()=>setUploadMenu('back')}>Upload Back Driving License Image</button>
+        </div>}
+      </div>
       <AadhaarUploader key={uploadVersion} disabled={disabled} onBusy={workflow.setAadhaarBusy}
         fillDetails={workflow.fillAadhaarDetails} showScanInstructions={false}
-        primaryButtonLabel="Upload Aadhar Image" hideSecond/>
+        primaryButtonLabel="Upload Aadhar Image" hideSecond hidePrimary openMenu={uploadMenu==='aadhaar'} onMenuChange={open=>!open&&setUploadMenu(undefined)}/>
       <DrivingLicenceUploader key={'dl-'+uploadVersion} disabled={disabled} onBusy={workflow.setDrivingLicenceBusy}
-        onReady={workflow.setDrivingLicenceReady} onDetails={workflow.fillDrivingLicenceDetails}/>
+        onReady={workflow.setDrivingLicenceReady} onDetails={workflow.fillDrivingLicenceDetails} hideLaunchers openMenu={uploadMenu==='front'||uploadMenu==='back'?uploadMenu:undefined} onMenuChange={menu=>!menu&&setUploadMenu(undefined)}/>
     </div>}
   </div>;
 }

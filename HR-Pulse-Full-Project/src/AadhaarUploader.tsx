@@ -15,6 +15,9 @@ type Props = {
   primaryButtonLabel?: string;
   secondaryDocumentLabel?: string;
   hideSecond?: boolean;
+  hidePrimary?: boolean;
+  openMenu?: boolean;
+  onMenuChange?: (open: boolean) => void;
 };
 
 const imageTypes = '.jpg,.jpeg,.png,image/jpeg,image/png';
@@ -33,8 +36,11 @@ function usePreview(file?: File) {
 export default function AadhaarUploader({
   photo, photo2, onPhoto, onPhoto2, fillDetails, disabled, onBusy, showScanInstructions = true,
   primaryButtonLabel = 'Upload Aadhar Front Image', secondaryDocumentLabel, hideSecond = false,
+  hidePrimary = false, openMenu, onMenuChange,
 }: Props) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [localMenuOpen, setLocalMenuOpen] = useState(false);
+  const menuOpen=openMenu??localMenuOpen;
+  const setMenuOpen=(open:boolean)=>{setLocalMenuOpen(open);onMenuChange?.(open);};
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [firstFile, setFirstFile] = useState(photo);
@@ -97,7 +103,7 @@ export default function AadhaarUploader({
     <p>{secondaryDocumentLabel?`Upload one Aadhaar image and one ${secondaryDocumentLabel} in JPG, JPEG, PNG, or PDF format.`:'Upload up to two Aadhaar images in JPG, JPEG, PNG, or PDF format.'}{showScanInstructions &&
       ' Images and PDFs are sent to Google Gemini to read the details. Use an unlocked PDF up to 1.3 MB. Verify the extracted fields before saving.'}</p>
     <div className="aadhaar-upload-actions">
-      <button disabled={locked} type="button" className="employee-import" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}><Upload/>{primaryButtonLabel}</button>
+      {!hidePrimary&&<button disabled={locked} type="button" className="employee-import" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Upload/>{primaryButtonLabel}</button>}
       {menuOpen && <div className="aadhaar-source-menu">
         <button disabled={locked} type="button" onClick={() => camera.current?.click()}><Camera/>Camera</button>
         <button disabled={locked} type="button" onClick={() => gallery.current?.click()}><Images/>Gallery / Document</button>
