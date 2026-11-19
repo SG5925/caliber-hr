@@ -63,12 +63,10 @@ it('opens a completed operator trial at step two and saves it on the sixth step 
   fireEvent.change(control,{target:{value}});
  }
  // The selected recommendation changed from Driver to Operator, so choose its posting.
- fireEvent.change(screen.getByLabelText(/^Marital Status/),{target:{value:'Unmarried'}});
  fireEvent.change(screen.getByLabelText('Date of Birth 1'),{target:{value:'01/01/1970'}});
  fireEvent.change(screen.getByRole('combobox',{name:'Sub-department'}),{target:{value:'Drilling'}});
  fireEvent.change(screen.getByRole('combobox',{name:'Designation'}),{target:{value:'Excavator Operator'}});
  fireEvent.change(screen.getByLabelText(/^Mess Plan/),{target:{value:'NO'}});
- fireEvent.change(screen.getByLabelText('Marital Status *'),{target:{value:'Unmarried'}});
  fireEvent.input(screen.getByLabelText('Date of Birth 1'),{target:{value:'15032000'}});
  for(let index=0;index<4;index++){
   await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Save & Continue'}));});
